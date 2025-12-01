@@ -29,21 +29,21 @@ const PERSONA_CONFIG = {
     icon: Stethoscope,
     description: 'Denial resolution focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai']
   },
   admin: {
     name: 'Admin',
     icon: Users,
     description: 'Operations focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'payer', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'payer']
   },
   executive: {
     name: 'Executive',
     icon: Briefcase,
     description: 'Financial focus',
     defaultTab: 'dashboard',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer']
   }
 }
 import './App.css'

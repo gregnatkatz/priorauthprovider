@@ -129,8 +129,8 @@ Each recommendation displays: **Policy Match Grade**, **Viability Grade**, **Saf
 
 Three role-based views with different dashboard metrics and tab visibility:
 
-- **Clinical (Nurse/Staff)**: Dashboard (Avg Time to Treat, Quality Score), Prior Auth (Can I Treat?), Denials (Clinical Urgency, SDOH Risk), AI Agents - focused on patient care and treatment readiness
-- **Admin**: Dashboard (all metrics), Prior Auth, Denials, AI Agents, Payer - full operational view with financial and clinical data
+- **Clinical (Charge Nurse)**: Dashboard (835 Remittances, CARC/RARC Analysis), Denials (Clinical Urgency, SDOH Risk), AI Agents - focused on denial resolution and patient impact
+- **Admin**: Dashboard (all metrics), Denials, AI Agents, Payer - full operational view with financial and denial data
 - **Executive**: Dashboard (At Risk Amount, Recovery Rate, Training & Enhancement Opportunities), AI Agents, Learning, Payer - KPIs, trends, and staff training insights
 
 ## Synthetic Dataset
@@ -294,10 +294,6 @@ Executive view showing financial metrics and the new "Training & Enhancement Opp
 Clinical (Nurse/Staff) view showing "Avg Time to Treat" and "Quality Score" instead of cost metrics - focused on patient care outcomes.
 ![Clinical Dashboard](screenshots/02_clinical_dashboard.png)
 
-### Prior Auth Tab (Clinical View)
-Prior Auth list with "Can I Treat?" column showing YES/NO/PENDING status for each authorization. Includes working filters and search.
-![Prior Auth Clinical](screenshots/03_prior_auth_clinical.png)
-
 ### Denials Tab (Clinical View)
 Denials list with Clinical Urgency and SDOH Risk columns. Includes working status filters (All, New, In Review, Awaiting Docs, Appealed, Payer Pending, Resolved) and search.
 ![Denials Clinical](screenshots/04_denials_clinical.png)
@@ -313,10 +309,6 @@ Detail drawer with AI recommendations, missing documentation checklist, P2P revi
 ### Denials AI Analysis with Validation Grades
 Shows validation grades (Policy Match, Viability, Safety Status) after running all 18 agents on a denial.
 ![Denials AI Analysis](screenshots/07_denials_ai_analysis.png)
-
-### Prior Auth Workflow Drawer
-Detail drawer with "Can I Treat?" guidance, denial risk assessment, documentation checklist, and treatment guidance.
-![Prior Auth Workflow](screenshots/08_prior_auth_workflow_drawer.png)
 
 ### Test Ingest Feature
 Simulates 10 new prior auth cases being processed through all 18 AI agents. Shows AI-resolved queue with one-click approval for low-risk cases.
@@ -391,24 +383,17 @@ Adds clinical context to denial analysis:
 | dim_procedure | Epic FHIR Procedure resource | CPT/HCPCS codes, descriptions |
 | dim_physician | Epic FHIR Practitioner resource | NPI, specialty, credentials |
 
-### Phase 3: Prior Authorization Intelligence (6+ months)
+### Phase 3: Prior Authorization Intelligence (6+ months) - FUTURE ROADMAP
 **Data Source:** Payer portals (Availity, direct APIs), Epic PA module, RPA for stragglers
 **Complexity:** HIGH - Fragmented, payer-by-payer integration
 
-Real-time prior auth status aggregation:
+> **Note:** Prior Authorization features are NOT included in this POC. Real-time PA status requires complex payer-by-payer integrations that are not yet available. This phase is documented here for future roadmap planning only.
+
+Future capabilities (not implemented):
 - Multi-payer PA status tracking
 - "Can I Treat?" real-time guidance
 - PA denial prediction before submission
 - Automated follow-up scheduling
-
-**POC Entity Mapping:**
-| POC Table | Production Source | Key Fields |
-|-----------|------------------|------------|
-| fact_prior_auth | Epic PA module + payer APIs | auth_status, decision_date, denial_probability |
-| dim_treatment_guideline | InterQual, MCG, internal P&T | medical necessity criteria |
-| fact_treatment_guidance_result | AI evaluation results | can_treat status, missing criteria |
-
-> **Note:** The Prior Auth tab in this POC is labeled "Phase 3" to indicate this functionality requires complex payer integrations not yet available. The current implementation uses synthetic data to demonstrate the target workflow.
 
 ## RHAIL Compatibility
 
