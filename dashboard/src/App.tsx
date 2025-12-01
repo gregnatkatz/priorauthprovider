@@ -27,23 +27,23 @@ const PERSONA_CONFIG = {
   clinical: {
     name: 'Clinical (Charge Nurse)',
     icon: Stethoscope,
-    description: 'Ward management focus',
-    defaultTab: 'pa',
-    visibleTabs: ['dashboard', 'pa', 'denials', 'ai']
+    description: 'Denial resolution focus',
+    defaultTab: 'denials',
+    visibleTabs: ['dashboard', 'denials', 'ai', 'pa']
   },
   admin: {
     name: 'Admin',
     icon: Users,
     description: 'Operations focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'pa', 'denials', 'ai', 'payer']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'payer', 'pa']
   },
   executive: {
     name: 'Executive',
     icon: Briefcase,
     description: 'Financial focus',
     defaultTab: 'dashboard',
-    visibleTabs: ['dashboard', 'pa', 'denials', 'ai', 'learning', 'payer']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer', 'pa']
   }
 }
 import './App.css'
@@ -873,32 +873,32 @@ function App() {
             </div>
           </div>
         
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">PA Pending</p>
-                <div className="text-2xl font-bold text-white mt-1">{metrics?.pa_pending}</div>
-                <p className="text-xs text-slate-400 mt-1">Awaiting decision</p>
-              </div>
-              <div className="vision-icon-box vision-gradient-blue">
-                <Shield className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </div>
+                  <div className="vision-stat-card">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">835 Remittances</p>
+                        <div className="text-2xl font-bold text-white mt-1">{metrics?.total_claims.toLocaleString()}</div>
+                        <p className="text-xs text-slate-400 mt-1">Processed this month</p>
+                      </div>
+                      <div className="vision-icon-box vision-gradient-blue">
+                        <FileText className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                  </div>
         
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">PA Approval Rate</p>
-                <div className="text-2xl font-bold text-emerald-400 mt-1">{metrics?.pa_approval_rate}%</div>
-                <p className="text-xs text-slate-400 mt-1">This month</p>
-              </div>
-              <div className="vision-icon-box vision-gradient-green">
-                <Activity className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
+                  <div className="vision-stat-card">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">CARC/RARC Analysis</p>
+                        <div className="text-2xl font-bold text-emerald-400 mt-1">{metrics?.avg_appeal_success_rate}%</div>
+                        <p className="text-xs text-slate-400 mt-1">Appeal success rate</p>
+                      </div>
+                      <div className="vision-icon-box vision-gradient-green">
+                        <Activity className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
         {/* Executive Training Insights - Only show for Executive persona */}
         {persona === 'executive' && (
@@ -3570,8 +3570,8 @@ function App() {
                   <Stethoscope className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Denial Management</h1>
-                  <p className="text-sm text-slate-400">Prior Authorization Intelligence Platform</p>
+                                    <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Denial Intelligence Platform</h1>
+                                    <p className="text-sm text-slate-400">835 Remittance Analytics & AI-Powered Recovery</p>
                 </div>
               </div>
                         <div className="flex items-center gap-4">
@@ -3646,12 +3646,12 @@ function App() {
                           Dashboard
                         </TabsTrigger>
                       )}
-                      {PERSONA_CONFIG[persona].visibleTabs.includes('pa') && (
-                        <TabsTrigger value="pa" className="flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          Prior Auth
-                        </TabsTrigger>
-                      )}
+                                            {PERSONA_CONFIG[persona].visibleTabs.includes('pa') && (
+                                              <TabsTrigger value="pa" className="flex items-center gap-2">
+                                                <Shield className="h-4 w-4" />
+                                                Prior Auth <span className="text-xs text-slate-500 ml-1">(Phase 3)</span>
+                                              </TabsTrigger>
+                                            )}
                       {PERSONA_CONFIG[persona].visibleTabs.includes('denials') && (
                         <TabsTrigger value="denials" className="flex items-center gap-2">
                           <AlertCircle className="h-4 w-4" />
