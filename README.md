@@ -1,6 +1,10 @@
-# Prior Authorization Intelligence Platform (Denial Management System)
+# Denial Intelligence Platform (835 Remittance Analytics)
 
-A comprehensive healthcare denial management POC built with React, FastAPI, and Azure AI agents. This platform helps nurses and staff reduce time-to-action on denials and prior authorizations through AI-powered recommendations, multi-model validation, and streamlined workflows.
+A comprehensive healthcare denial management POC built with React, FastAPI, and Azure AI agents. This platform helps nurses and staff reduce time-to-action on denials through AI-powered recommendations, multi-model validation, and streamlined workflows.
+
+**Primary Focus: 835 Remittance Data (Phase 1)**
+
+This POC is designed around 835 ERA (Electronic Remittance Advice) data - the standardized format payers use to communicate claim adjudication results, including denials with CARC/RARC codes. This is the most accessible and standardized data source for denial management, representing ~80% of the value in revenue cycle optimization.
 
 ## Live Demo
 
@@ -347,11 +351,76 @@ This POC implements the data structures and workflows compatible with Microsoft'
 - AI agent architecture for denial management
 - RL trace collection for continuous improvement
 
-## Phase Roadmap
+## Integration Phases & Production Roadmap
 
-- **Phase 1** (Complete): Synthetic data POC with SQLite
-- **Phase 2** (Complete): Azure AI agents with model diversification
-- **Phase 3** (Future): Fabric HDS integration, live RAG, production deployment
+This POC is designed with a phased integration approach aligned with AdventHealth's production data sources:
+
+### Phase 1: 835 Denial Management (60-90 days) - PRIMARY FOCUS
+**Data Source:** Clearinghouse ERA feeds (Availity/Change Healthcare)
+**Complexity:** LOW - Standardized EDI format, batch processing
+
+This POC demonstrates Phase 1 capabilities:
+- 835 remittance data ingestion with CARC/RARC codes
+- Denial root cause analysis and categorization
+- AI-powered appeal recommendations
+- Recovery prediction and prioritization
+- Staff workflow optimization
+
+**POC Entity Mapping:**
+| POC Table | Production Source | Key Fields |
+|-----------|------------------|------------|
+| fact_denial | 835 CAS segment | carc_code, rarc_code, group_code, adjustment_amount |
+| fact_claim | 835 CLP segment + 837 context | claim_number, payer_claim_number, billed/allowed/paid amounts |
+| dim_denial_reason | CARC/RARC reference tables | denial codes, categories, descriptions |
+| dim_payer | Clearinghouse payer IDs | payer identifiers, ERA routing |
+
+### Phase 2: Clinical Context Integration (90-180 days)
+**Data Source:** Epic FHIR R4 APIs, Epic Bridges
+**Complexity:** MEDIUM - Requires Epic integration
+
+Adds clinical context to denial analysis:
+- Patient demographics and clinical history
+- Diagnosis codes and procedures from EHR
+- Clinical documentation for appeals
+- SDOH scores from Z-codes and social history
+
+**POC Entity Mapping:**
+| POC Table | Production Source | Key Fields |
+|-----------|------------------|------------|
+| dim_patient | Epic FHIR Patient resource | demographics, MRN, SDOH indicators |
+| dim_procedure | Epic FHIR Procedure resource | CPT/HCPCS codes, descriptions |
+| dim_physician | Epic FHIR Practitioner resource | NPI, specialty, credentials |
+
+### Phase 3: Prior Authorization Intelligence (6+ months)
+**Data Source:** Payer portals (Availity, direct APIs), Epic PA module, RPA for stragglers
+**Complexity:** HIGH - Fragmented, payer-by-payer integration
+
+Real-time prior auth status aggregation:
+- Multi-payer PA status tracking
+- "Can I Treat?" real-time guidance
+- PA denial prediction before submission
+- Automated follow-up scheduling
+
+**POC Entity Mapping:**
+| POC Table | Production Source | Key Fields |
+|-----------|------------------|------------|
+| fact_prior_auth | Epic PA module + payer APIs | auth_status, decision_date, denial_probability |
+| dim_treatment_guideline | InterQual, MCG, internal P&T | medical necessity criteria |
+| fact_treatment_guidance_result | AI evaluation results | can_treat status, missing criteria |
+
+> **Note:** The Prior Auth tab in this POC is labeled "Phase 3" to indicate this functionality requires complex payer integrations not yet available. The current implementation uses synthetic data to demonstrate the target workflow.
+
+## RHAIL Compatibility
+
+This POC implements data structures inspired by Microsoft's RHAIL (Revenue Health AI Lab) Claims Denial Navigator:
+
+- Star schema matching Fabric HDS patterns
+- CARC/RARC denial codes from 835 CAS segments
+- 835/837 claim data structures
+- AI agent architecture for denial management
+- RL trace collection for continuous improvement
+
+The schema is designed for easy migration to Fabric HDS when production integration begins.
 
 ## License
 
