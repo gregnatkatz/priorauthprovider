@@ -25,9 +25,9 @@ type Persona = 'clinical' | 'admin' | 'executive'
 
 const PERSONA_CONFIG = {
   clinical: {
-    name: 'Clinical (Nurse/Staff)',
+    name: 'Clinical (Charge Nurse)',
     icon: Stethoscope,
-    description: 'Patient care focus',
+    description: 'Ward management focus',
     defaultTab: 'pa',
     visibleTabs: ['dashboard', 'pa', 'denials', 'ai']
   },
@@ -1664,47 +1664,131 @@ function App() {
               </CardContent>
             </Card>
 
-            {/* Quick Action Buttons */}
+            {/* Quick Action Buttons - Persona-specific */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Zap className="h-4 w-4 text-amber-400" />
-                  Quick Actions
+                  {persona === 'clinical' ? 'Charge Nurse Actions' : 'Quick Actions'}
                 </CardTitle>
+                {persona === 'clinical' && (
+                  <CardDescription className="text-xs text-slate-400">
+                    Treatment decisions & team coordination
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => handleWorkflowAction('submit_appeal', selectedDenial.denial_id)}
-                  >
-                    <FileUp className="h-4 w-4 mr-2" />
-                    Submit Appeal
-                  </Button>
-                  <Button 
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                    onClick={() => handleWorkflowAction('schedule_p2p', selectedDenial.denial_id)}
-                    disabled={!selectedDenial.p2p_recommended}
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Schedule P2P
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleWorkflowAction('request_docs', selectedDenial.denial_id)}
-                  >
-                    <Clipboard className="h-4 w-4 mr-2" />
-                    Request Docs
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    className="text-red-400 border-red-400/50 hover:bg-red-400/10"
-                    onClick={() => handleWorkflowAction('close_non_recoverable', selectedDenial.denial_id)}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Non-Recoverable
-                  </Button>
-                </div>
+                {persona === 'clinical' ? (
+                  <>
+                    {/* Treatment Decision Actions */}
+                    <div className="text-xs text-slate-400 uppercase font-semibold mb-1">Treatment Decision</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                        onClick={() => handleWorkflowAction('proceed_treat_and_appeal', selectedDenial.denial_id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Proceed with Treatment
+                      </Button>
+                      <Button 
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                        onClick={() => handleWorkflowAction('hold_treatment_pending', selectedDenial.denial_id)}
+                      >
+                        <Timer className="h-4 w-4 mr-1" />
+                        Hold - Await Review
+                      </Button>
+                      <Button 
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs col-span-2"
+                        onClick={() => handleWorkflowAction('mark_stat_clinical', selectedDenial.denial_id)}
+                      >
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        Mark STAT - Urgent Treatment Needed
+                      </Button>
+                    </div>
+
+                    {/* Team Coordination Actions */}
+                    <div className="text-xs text-slate-400 uppercase font-semibold mt-3 mb-1">Team Coordination</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
+                        onClick={() => handleWorkflowAction('page_attending_p2p', selectedDenial.denial_id)}
+                        disabled={!selectedDenial.p2p_recommended}
+                      >
+                        <Phone className="h-4 w-4 mr-1" />
+                        Page Attending for P2P
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => handleWorkflowAction('notify_case_management', selectedDenial.denial_id)}
+                      >
+                        <Users className="h-4 w-4 mr-1" />
+                        Notify Case Mgmt
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => handleWorkflowAction('request_md_addendum', selectedDenial.denial_id)}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Request MD Note
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => handleWorkflowAction('update_bedside_handoff', selectedDenial.denial_id)}
+                      >
+                        <Clipboard className="h-4 w-4 mr-1" />
+                        Update Bedside Team
+                      </Button>
+                    </div>
+
+                    {/* Revenue Cycle Notification */}
+                    <div className="text-xs text-slate-400 uppercase font-semibold mt-3 mb-1">Revenue Cycle</div>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      onClick={() => handleWorkflowAction('notify_rev_cycle_appeal', selectedDenial.denial_id)}
+                    >
+                      <FileUp className="h-4 w-4 mr-1" />
+                      Notify Rev Cycle to File Appeal
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => handleWorkflowAction('submit_appeal', selectedDenial.denial_id)}
+                      >
+                        <FileUp className="h-4 w-4 mr-2" />
+                        Submit Appeal
+                      </Button>
+                      <Button 
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={() => handleWorkflowAction('schedule_p2p', selectedDenial.denial_id)}
+                        disabled={!selectedDenial.p2p_recommended}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Schedule P2P
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => handleWorkflowAction('request_docs', selectedDenial.denial_id)}
+                      >
+                        <Clipboard className="h-4 w-4 mr-2" />
+                        Request Docs
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="text-red-400 border-red-400/50 hover:bg-red-400/10"
+                        onClick={() => handleWorkflowAction('close_non_recoverable', selectedDenial.denial_id)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Non-Recoverable
+                      </Button>
+                    </div>
+                  </>
+                )}
 
                 {/* Follow AI vs Override */}
                 <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
@@ -2479,47 +2563,134 @@ function App() {
             </CardContent>
           </Card>
 
-          {/* Quick Action Buttons */}
+          {/* Quick Action Buttons - Persona-specific */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-400" />
-                Quick Actions
+                {persona === 'clinical' ? 'Charge Nurse Actions' : 'Quick Actions'}
               </CardTitle>
+              {persona === 'clinical' && (
+                <CardDescription className="text-xs text-slate-400">
+                  Treatment scheduling & care coordination
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                  onClick={() => handlePAAction('submit_pa', selectedPA.prior_auth_id)}
-                  disabled={selectedPA.auth_status !== 'Pending'}
-                >
-                  <FileUp className="h-4 w-4 mr-2" />
-                  Submit PA
-                </Button>
-                <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => handlePAAction('add_docs', selectedPA.prior_auth_id)}
-                >
-                  <Clipboard className="h-4 w-4 mr-2" />
-                  Add Clinical Docs
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => handlePAAction('escalate', selectedPA.prior_auth_id)}
-                >
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Escalate / Peer Review
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="text-red-400 border-red-400/50 hover:bg-red-400/10"
-                  onClick={() => handlePAAction('cancel', selectedPA.prior_auth_id)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel / Change Order
-                </Button>
-              </div>
+              {persona === 'clinical' ? (
+                <>
+                  {/* Treatment Readiness Actions */}
+                  <div className="text-xs text-slate-400 uppercase font-semibold mb-1">Treatment Readiness</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                      onClick={() => handlePAAction('confirm_ready_schedule', selectedPA.prior_auth_id)}
+                      disabled={selectedPA.auth_status !== 'Approved'}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Confirm Ready to Treat
+                    </Button>
+                    <Button 
+                      className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                      onClick={() => handlePAAction('mark_at_risk_cancellation', selectedPA.prior_auth_id)}
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-1" />
+                      At Risk of Cancellation
+                    </Button>
+                    <Button 
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs col-span-2"
+                      onClick={() => handlePAAction('flag_stat_to_pa_team', selectedPA.prior_auth_id)}
+                    >
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      Flag STAT to PA/UR Team
+                    </Button>
+                  </div>
+
+                  {/* Physician Communication */}
+                  <div className="text-xs text-slate-400 uppercase font-semibold mt-3 mb-1">Physician Communication</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => handlePAAction('request_md_justification', selectedPA.prior_auth_id)}
+                    >
+                      <FileText className="h-4 w-4 mr-1" />
+                      Request MD Justification
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => handlePAAction('discuss_alternate_plan', selectedPA.prior_auth_id)}
+                    >
+                      <Stethoscope className="h-4 w-4 mr-1" />
+                      Discuss Alternate Plan
+                    </Button>
+                  </div>
+
+                  {/* Care Coordination */}
+                  <div className="text-xs text-slate-400 uppercase font-semibold mt-3 mb-1">Care Coordination</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      onClick={() => handlePAAction('send_docs_to_pa_team', selectedPA.prior_auth_id)}
+                    >
+                      <FileUp className="h-4 w-4 mr-1" />
+                      Send Docs to PA Team
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="text-xs"
+                      onClick={() => handlePAAction('reschedule_or_adjust_care', selectedPA.prior_auth_id)}
+                    >
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Reschedule Procedure
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="text-red-400 border-red-400/50 hover:bg-red-400/10 text-xs col-span-2"
+                      onClick={() => handlePAAction('cancel_change_order', selectedPA.prior_auth_id)}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel / Change Treatment Order
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={() => handlePAAction('submit_pa', selectedPA.prior_auth_id)}
+                      disabled={selectedPA.auth_status !== 'Pending'}
+                    >
+                      <FileUp className="h-4 w-4 mr-2" />
+                      Submit PA
+                    </Button>
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => handlePAAction('add_docs', selectedPA.prior_auth_id)}
+                    >
+                      <Clipboard className="h-4 w-4 mr-2" />
+                      Add Clinical Docs
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => handlePAAction('escalate', selectedPA.prior_auth_id)}
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Escalate / Peer Review
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="text-red-400 border-red-400/50 hover:bg-red-400/10"
+                      onClick={() => handlePAAction('cancel', selectedPA.prior_auth_id)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel / Change Order
+                    </Button>
+                  </div>
+                </>
+              )}
 
               {/* Follow AI vs Override */}
               <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
