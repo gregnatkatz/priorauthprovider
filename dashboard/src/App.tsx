@@ -4093,6 +4093,77 @@ function App() {
             )}
           </div>
 
+          {/* Scenario Modeler */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Scenario Modeler
+              </CardTitle>
+              <CardDescription>Adjust parameters to model financial impact</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">Denial Rate: {scenarioDenialRate.toFixed(1)}%</label>
+                  <input 
+                    type="range" 
+                    min="5" 
+                    max="35" 
+                    step="0.5"
+                    value={scenarioDenialRate}
+                    onChange={(e) => setScenarioDenialRate(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>5%</span>
+                    <span>Current: 18.5%</span>
+                    <span>35%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">Appeal Success Rate: {scenarioAppealSuccess}%</label>
+                  <input 
+                    type="range" 
+                    min="30" 
+                    max="90" 
+                    step="1"
+                    value={scenarioAppealSuccess}
+                    onChange={(e) => setScenarioAppealSuccess(parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>30%</span>
+                    <span>Current: 67%</span>
+                    <span>90%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-sm text-slate-400">Projected Denials</div>
+                    <div className="text-xl font-bold text-orange-400">
+                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (scenarioDenialRate / 100))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400">Recoverable via Appeals</div>
+                    <div className="text-xl font-bold text-green-400">
+                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (scenarioDenialRate / 100) * (scenarioAppealSuccess / 100))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400">Net Collection Impact</div>
+                    <div className="text-xl font-bold text-blue-400">
+                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (1 - (scenarioDenialRate / 100) * (1 - scenarioAppealSuccess / 100)))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Payer Performance */}
           {payerPerformance && (
             <Card>
