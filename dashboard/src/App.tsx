@@ -584,7 +584,7 @@ function App() {
               
               return next
             })
-          }, 600)
+          }, 1500)
         })
       }
       
