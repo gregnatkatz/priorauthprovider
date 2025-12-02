@@ -238,6 +238,14 @@ function App() {
     // Simulate changes state for demo
     const [simulatedChanges, setSimulatedChanges] = useState<string[]>([])
     const [changesNeedReEval, setChangesNeedReEval] = useState(false)
+    // Feed ingestion state
+    const [feedStatus, setFeedStatus] = useState<any>(null)
+    const [feedRunning, setFeedRunning] = useState(false)
+    const [autoFeedEnabled, setAutoFeedEnabled] = useState(false)
+    // AI adherence metrics
+    const [aiAdherence, setAiAdherence] = useState<any>(null)
+    // Recovery rate metrics
+    const [recoveryRate, setRecoveryRate] = useState<any>(null)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -263,6 +271,9 @@ function App() {
       fetchPriorAuths()
     } else if (activeTab === 'ai') {
       fetchAIData()
+      fetchFeedStatus()
+      fetchAIAdherence()
+      fetchRecoveryRate()
     } else if (activeTab === 'learning') {
       fetchLearningData()
     } else if (activeTab === 'payer') {
@@ -372,6 +383,90 @@ function App() {
       }
     }
 
+    const fetchFeedStatus = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/feeds/status`)
+        setFeedStatus(await res.json())
+      } catch (error) {
+        console.error('Error fetching feed status:', error)
+      }
+    }
+
+    const fetchAIAdherence = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/analytics/ai-adherence`)
+        setAiAdherence(await res.json())
+      } catch (error) {
+        console.error('Error fetching AI adherence:', error)
+      }
+    }
+
+    const fetchRecoveryRate = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/analytics/recovery-rate`)
+        setRecoveryRate(await res.json())
+      } catch (error) {
+        console.error('Error fetching recovery rate:', error)
+      }
+    }
+
+    const triggerFeedIngestion = async (source: string) => {
+      setFeedRunning(true)
+      try {
+        const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
+        const data = await res.json()
+        console.log('Feed ingestion result:', data)
+        // Refresh data after ingestion
+        await fetchFeedStatus()
+        await fetchDenials()
+        await fetchDashboardData()
+      } catch (error) {
+        console.error('Error triggering feed ingestion:', error)
+      } finally {
+        setFeedRunning(false)
+      }
+    }
+
+    const toggleAutoFeed = async () => {
+      try {
+        if (autoFeedEnabled) {
+          await fetch(`${API_URL}/api/feeds/stop-auto`, { method: 'POST' })
+          setAutoFeedEnabled(false)
+        } else {
+          await fetch(`${API_URL}/api/feeds/start-auto`, { method: 'POST' })
+          setAutoFeedEnabled(true)
+        }
+      } catch (error) {
+        console.error('Error toggling auto feed:', error)
+      }
+    }
+
+    const simulatePolicyChange = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/policies/simulate-change?payer_id=1&change_type=coverage_expanded&affected_procedures=99213,99214&description=Coverage expanded for office visits`, { method: 'POST' })
+        const data = await res.json()
+        console.log('Policy change result:', data)
+        // Refresh denials to show re-eval badges
+        await fetchDenials()
+      } catch (error) {
+        console.error('Error simulating policy change:', error)
+      }
+    }
+
+    const simulateAppealResponses = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/appeals/simulate-responses`, { method: 'POST' })
+        const data = await res.json()
+        console.log('Appeal responses:', data)
+        // Refresh data
+        await fetchRecoveryRate()
+        await fetchDenials()
+        await fetchDashboardData()
+      } catch (error) {
+        console.error('Error simulating appeal responses:', error)
+      }
+    }
+
     const fetchDenialAnalysis = async (denialId: number) => {
       setAnalysisLoading(true)
       try {
@@ -409,16 +504,40 @@ function App() {
     }
 
     const handleWorkflowAction = async (action: string, denialId: number) => {
-      // In a real app, this would call the backend to update the denial status
-      // For POC, we'll just show a success message and update local state
       console.log(`Action: ${action} for denial ${denialId}`)
+      
+      // Determine action type for staff action logging
+      const actionType = action === 'follow_ai' ? 'follow_ai' : 
+                        action === 'override_ai' ? 'custom_plan' :
+                        action === 'close_non_recoverable' ? 'dismiss' : 'custom_plan'
+      
+      // Log staff action to backend for RL feedback loop
+      try {
+        await fetch(`${API_URL}/api/denials/${denialId}/action?action_type=${actionType}&actual_action=${action}&staff_id=staff_${persona}`, {
+          method: 'POST'
+        })
+      } catch (error) {
+        console.error('Error logging staff action:', error)
+      }
+      
+      // Submit appeal if action is submit_appeal or follow_ai with appeal recommendation
+      if (action === 'submit_appeal' || (action === 'follow_ai' && selectedDenial?.recommended_action?.toLowerCase().includes('appeal'))) {
+        try {
+          await fetch(`${API_URL}/api/denials/${denialId}/appeal?appeal_type=first_level&followed_ai=${action === 'follow_ai'}`, {
+            method: 'POST'
+          })
+        } catch (error) {
+          console.error('Error submitting appeal:', error)
+        }
+      }
     
-      // Simulate action completion
+      // Update local state
       const updatedDenials = denials.map(d => {
         if (d.denial_id === denialId) {
-          const newStatus = action === 'submit_appeal' ? 'Appealed' : 
+          const newStatus = action === 'submit_appeal' || action === 'follow_ai' ? 'Appealed' : 
                            action === 'schedule_p2p' ? 'In Review' :
-                           action === 'request_docs' ? 'In Review' : d.denial_status
+                           action === 'request_docs' ? 'In Review' : 
+                           action === 'close_non_recoverable' ? 'Written Off' : d.denial_status
           return { ...d, denial_status: newStatus }
         }
         return d
@@ -429,6 +548,9 @@ function App() {
       if (selectedDenial?.denial_id === denialId) {
         setSelectedDenial(prev => prev ? { ...prev, denial_status: updatedDenials.find(d => d.denial_id === denialId)?.denial_status || prev.denial_status } : null)
       }
+      
+      // Refresh AI adherence metrics
+      fetchAIAdherence()
     }
 
     const closeDenialDrawer = () => {
@@ -3007,6 +3129,216 @@ function App() {
                 <p className="text-xs text-slate-300">All recommendations are cross-verified by multiple AI models. High-risk decisions require human review.</p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Feed Control Card - Clearinghouse Ingestion */}
+      <Card className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border-blue-500/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-blue-400" />
+            Clearinghouse Feed Control
+          </CardTitle>
+          <CardDescription>
+            Ingest 835 remittance data from clearinghouses. Each feed generates 5-15 claims with realistic denial rates.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Manual Feed Buttons */}
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => triggerFeedIngestion('Availity')} 
+                disabled={feedRunning}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {feedRunning ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4 mr-2" />
+                )}
+                Availity Feed
+              </Button>
+              <Button 
+                onClick={() => triggerFeedIngestion('Change Healthcare')} 
+                disabled={feedRunning}
+                className="flex-1 bg-cyan-600 hover:bg-cyan-700"
+              >
+                {feedRunning ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4 mr-2" />
+                )}
+                Change Healthcare
+              </Button>
+            </div>
+
+            {/* Auto-Feed Toggle */}
+            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+              <div>
+                <p className="font-medium text-slate-200">Auto-Ingest (every 2 min)</p>
+                <p className="text-xs text-slate-400">Automatically fetch new claims from clearinghouses</p>
+              </div>
+              <Button 
+                onClick={toggleAutoFeed}
+                variant={autoFeedEnabled ? "destructive" : "outline"}
+                size="sm"
+              >
+                {autoFeedEnabled ? 'Stop' : 'Start'}
+              </Button>
+            </div>
+
+            {/* Feed Status */}
+            {feedStatus && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-2 bg-slate-800/50 rounded text-center">
+                  <div className="text-xl font-bold text-blue-400">{feedStatus.feeds_today || 0}</div>
+                  <div className="text-xs text-slate-400">Feeds Today</div>
+                </div>
+                <div className="p-2 bg-slate-800/50 rounded text-center">
+                  <div className="text-xl font-bold text-emerald-400">{feedStatus.claims_today || 0}</div>
+                  <div className="text-xs text-slate-400">Claims Today</div>
+                </div>
+                <div className="p-2 bg-slate-800/50 rounded text-center">
+                  <div className="text-xl font-bold text-amber-400">{feedStatus.denials_today || 0}</div>
+                  <div className="text-xs text-slate-400">Denials Today</div>
+                </div>
+                <div className="p-2 bg-slate-800/50 rounded text-center">
+                  <div className="text-xl font-bold text-purple-400">
+                    {feedStatus.claims_today > 0 ? Math.round((feedStatus.denials_today / feedStatus.claims_today) * 100) : 0}%
+                  </div>
+                  <div className="text-xs text-slate-400">Denial Rate</div>
+                </div>
+              </div>
+            )}
+
+            {/* Last Feed Info */}
+            {feedStatus?.last_feed && (
+              <div className="text-xs text-slate-400 text-center">
+                Last feed: {feedStatus.last_feed.source} at {new Date(feedStatus.last_feed.completed_at).toLocaleTimeString()} 
+                ({feedStatus.last_feed.claims_added} claims, {feedStatus.last_feed.denials_added} denials)
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Adherence & Recovery Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* AI Adherence Card */}
+        <Card className="bg-gradient-to-r from-emerald-900/30 to-green-900/30 border-emerald-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Brain className="h-4 w-4 text-emerald-400" />
+              AI Adherence Rate
+            </CardTitle>
+            <CardDescription className="text-xs">Staff following AI recommendations (target: 67.5%)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {aiAdherence ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold text-emerald-400">
+                    {(aiAdherence.follow_ai_rate * 100).toFixed(1)}%
+                  </span>
+                  <Badge className={aiAdherence.follow_ai_rate >= 0.675 ? 'bg-emerald-600' : 'bg-amber-600'}>
+                    {aiAdherence.follow_ai_rate >= 0.675 ? 'On Target' : 'Below Target'}
+                  </Badge>
+                </div>
+                <Progress value={aiAdherence.follow_ai_rate * 100} className="h-2" />
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-slate-800/50 rounded">
+                    <span className="text-slate-400">Follow AI:</span>
+                    <span className="ml-1 text-emerald-400">{aiAdherence.follow_ai_count}</span>
+                  </div>
+                  <div className="p-2 bg-slate-800/50 rounded">
+                    <span className="text-slate-400">Custom Plan:</span>
+                    <span className="ml-1 text-amber-400">{aiAdherence.custom_plan_count}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-slate-400 py-4">No staff actions recorded yet</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recovery Rate Card */}
+        <Card className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-purple-400" />
+              Appeal Recovery Rate
+            </CardTitle>
+            <CardDescription className="text-xs">Appeal success and recovery metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recoveryRate ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold text-purple-400">
+                    {(recoveryRate.overall_success_rate * 100).toFixed(1)}%
+                  </span>
+                  <span className="text-emerald-400 font-medium">
+                    {formatCurrency(recoveryRate.total_recovered || 0)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-slate-800/50 rounded text-center">
+                    <div className="text-emerald-400 font-bold">{recoveryRate.overturned || 0}</div>
+                    <div className="text-slate-400">Overturned</div>
+                  </div>
+                  <div className="p-2 bg-slate-800/50 rounded text-center">
+                    <div className="text-amber-400 font-bold">{recoveryRate.partial || 0}</div>
+                    <div className="text-slate-400">Partial</div>
+                  </div>
+                  <div className="p-2 bg-slate-800/50 rounded text-center">
+                    <div className="text-red-400 font-bold">{recoveryRate.upheld || 0}</div>
+                    <div className="text-slate-400">Upheld</div>
+                  </div>
+                </div>
+                {recoveryRate.ai_boost_effect && (
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs">
+                    <span className="text-emerald-400">AI Boost:</span>
+                    <span className="ml-1 text-slate-300">
+                      Appeals following AI have {((recoveryRate.ai_boost_effect - 1) * 100).toFixed(0)}% higher success rate
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-slate-400 py-4">No appeals decided yet</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Policy Change Simulation */}
+      <Card className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border-amber-500/30">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-400" />
+            Policy Change Simulation
+          </CardTitle>
+          <CardDescription className="text-xs">Simulate payer policy updates and appeal responses</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3">
+            <Button 
+              onClick={simulatePolicyChange}
+              className="flex-1 bg-amber-600 hover:bg-amber-700"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Simulate Policy Change
+            </Button>
+            <Button 
+              onClick={simulateAppealResponses}
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Simulate Appeal Responses
+            </Button>
           </div>
         </CardContent>
       </Card>

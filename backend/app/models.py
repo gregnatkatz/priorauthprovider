@@ -332,6 +332,9 @@ class FactDenial(Base):
     staff_approval_by = Column(String(100))  # Staff name/ID
     staff_approval_notes = Column(Text)  # Optional rationale
     
+    # Policy change re-evaluation flag
+    needs_reeval = Column(Boolean, default=False)  # True when policy change affects this denial
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -427,15 +430,17 @@ class FactAppeal(Base):
     # Appeal details
     appeal_number = Column(String(50), unique=True)
     appeal_level = Column(Integer, default=1)  # 1st, 2nd, 3rd level
-    appeal_type = Column(String(50))  # Written, P2P, External Review
+    appeal_type = Column(String(50))  # first_level, second_level, external_review
     
     # Dates
     appeal_submitted_date = Column(Date, nullable=False)
     appeal_decision_date = Column(Date)
     
     # Outcome
-    appeal_status = Column(String(50))  # Pending, Won, Lost, Partial
+    appeal_status = Column(String(50))  # submitted, in_review, decided
+    outcome = Column(String(50))  # overturned, upheld, partial
     outcome_amount = Column(Float)  # Amount recovered
+    recovered_amount = Column(Float, default=0.0)  # Alias for outcome_amount
     
     # P2P details
     p2p_scheduled = Column(Boolean, default=False)
@@ -447,7 +452,8 @@ class FactAppeal(Base):
     appeal_letter = Column(Text)
     supporting_docs = Column(Text)  # JSON list of document references
     
-    # Learning data
+    # Learning data - links to RL trace
+    followed_ai = Column(Boolean, default=False)  # Whether staff followed AI recommendation
     success_factors = Column(Text)  # JSON - what worked
     failure_factors = Column(Text)  # JSON - what didn't work
     
@@ -457,6 +463,69 @@ class FactAppeal(Base):
     # Relationships
     denial = relationship("FactDenial", back_populates="appeals")
     p2p_physician = relationship("DimPhysician")
+
+
+# ==================== FEED INGESTION & WORKFLOW TABLES ====================
+
+class FeedIngestion(Base):
+    """Track clearinghouse feed ingestion jobs"""
+    __tablename__ = "feed_ingestion"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source = Column(String(50), nullable=False)  # 'Availity', 'Change Healthcare'
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    status = Column(String(20), default='running')  # running, complete, failed
+    claims_added = Column(Integer, default=0)
+    denials_added = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+
+
+class StaffAction(Base):
+    """Track staff actions on denials for RL feedback loop"""
+    __tablename__ = "staff_action"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    denial_id = Column(Integer, ForeignKey("fact_denial.denial_id"), nullable=False)
+    staff_id = Column(String(50), nullable=False)  # Simulated user ID
+    action_type = Column(String(50), nullable=False)  # follow_ai, custom_plan, escalate, dismiss
+    ai_recommendation = Column(String(200))  # What AI suggested
+    actual_action = Column(String(200))  # What staff did
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    notes = Column(Text, nullable=True)
+    
+    # Relationships
+    denial = relationship("FactDenial")
+
+
+class PolicyChange(Base):
+    """Track payer policy changes that affect denials"""
+    __tablename__ = "policy_change"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    payer_id = Column(Integer, ForeignKey("dim_payer.payer_id"), nullable=False)
+    change_type = Column(String(50), nullable=False)  # coverage_expanded, criteria_updated, pa_removed
+    affected_procedures = Column(Text)  # JSON array of CPT codes
+    effective_date = Column(Date, nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    payer = relationship("DimPayer")
+
+
+class AuditLog(Base):
+    """Audit trail for compliance"""
+    __tablename__ = "audit_log"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(String(50), nullable=False)  # Simulated user
+    user_role = Column(String(20), nullable=False)  # clinical, admin, executive
+    action = Column(String(50), nullable=False)  # view_denial, run_ai, submit_appeal, export_data
+    resource_type = Column(String(50))  # denial, prior_auth, patient, report
+    resource_id = Column(String(50), nullable=True)
+    details = Column(Text, nullable=True)  # JSON for additional context
 
 
 class FactRLTrace(Base):
