@@ -29,21 +29,21 @@ const PERSONA_CONFIG = {
     icon: Stethoscope,
     description: 'Denial resolution focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai']
   },
   admin: {
     name: 'Admin',
     icon: Users,
     description: 'Operations focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'payer', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'payer']
   },
   executive: {
     name: 'Executive',
     icon: Briefcase,
     description: 'Financial focus',
     defaultTab: 'dashboard',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer', 'pa']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer']
   }
 }
 import './App.css'
@@ -501,8 +501,8 @@ function App() {
       }
     }
 
-    // Test Ingest - simulate 10 PA cases through 18 AI agents
-    const simulateIngestion = async () => {
+        // Test Ingest - simulate 10 denial cases through 18 AI agents
+        const simulateIngestion = async () => {
       setIngestionRunning(true)
       setIngestionProgress(0)
       setIngestionSteps([])
@@ -517,9 +517,9 @@ function App() {
         { name: "Recovery Predictor", insight: "Predicting success probability...", category: "Revenue Intelligence" },
         { name: "P2P Optimizer", insight: "Identifying P2P opportunities...", category: "Revenue Intelligence" },
         { name: "Queue Wait Time", insight: "Optimizing submission timing...", category: "Revenue Intelligence" },
-        { name: "PA Risk Predictor", insight: "Assessing denial risk factors...", category: "PA Prevention" },
-        { name: "Doc Completeness", insight: "Scanning for missing docs...", category: "PA Prevention" },
-        { name: "Policy Monitor", insight: "Checking policy compliance...", category: "PA Prevention" },
+                { name: "Denial Risk Predictor", insight: "Assessing denial risk factors...", category: "Denial Prevention" },
+                { name: "Doc Completeness", insight: "Scanning for missing docs...", category: "Denial Prevention" },
+                { name: "Policy Monitor", insight: "Checking policy compliance...", category: "Denial Prevention" },
         { name: "Root Cause Analyzer", insight: "Identifying root causes...", category: "Learning" },
         { name: "Staff Feedback Processor", insight: "Processing feedback patterns...", category: "Learning" },
         { name: "Safety Validator", insight: "Validating clinical safety...", category: "Validation" },
@@ -610,9 +610,9 @@ function App() {
         { name: "Recovery Predictor", insight: "Predicting appeal success probability...", category: "Revenue Intelligence" },
         { name: "P2P Optimizer", insight: "Identifying peer-to-peer review opportunities...", category: "Revenue Intelligence" },
         { name: "Queue Wait Time", insight: "Optimizing submission timing...", category: "Revenue Intelligence" },
-        { name: "PA Risk Predictor", insight: "Assessing prior auth denial risk factors...", category: "PA Prevention" },
-        { name: "Doc Completeness", insight: "Scanning for missing documentation...", category: "PA Prevention" },
-        { name: "Policy Monitor", insight: "Checking payer policy compliance...", category: "PA Prevention" },
+                { name: "Denial Risk Predictor", insight: "Assessing denial risk factors...", category: "Denial Prevention" },
+                { name: "Doc Completeness", insight: "Scanning for missing documentation...", category: "Denial Prevention" },
+                { name: "Policy Monitor", insight: "Checking payer policy compliance...", category: "Denial Prevention" },
         { name: "Root Cause Analyzer", insight: "Identifying root cause of denial...", category: "Learning" },
         { name: "Staff Feedback Processor", insight: "Incorporating staff feedback patterns...", category: "Learning" },
         { name: "Safety Validator", insight: "Validating clinical safety requirements...", category: "Validation" },
@@ -744,7 +744,7 @@ function App() {
         { type: "New Documentation", description: "Clinical notes uploaded by physician" },
         { type: "Patient Status", description: "New diagnosis code added to patient record" },
         { type: "Lab Results", description: "New lab results available for review" },
-        { type: "Prior Auth Update", description: "Related prior authorization status changed" },
+        { type: "Payer Policy Update", description: "Related payer policy or coverage rules changed" },
         { type: "Appeal Deadline", description: "Appeal deadline approaching in 5 days" },
       ]
       
@@ -3018,9 +3018,9 @@ function App() {
             <Activity className="h-5 w-5 text-emerald-400" />
             Test Ingest
           </CardTitle>
-          <CardDescription>
-            Process 10 Prior Auth cases through 18 AI agents. AI resolves 8 cases (one-click approve), 2 need clinical review.
-          </CardDescription>
+                    <CardDescription>
+                      Process 10 denial cases through 18 AI agents. AI resolves 8 cases (one-click approve), 2 need clinical review.
+                    </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -3029,17 +3029,17 @@ function App() {
               disabled={ingestionRunning}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {ingestionRunning ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Processing 10 PA Cases...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Run Test Ingest (10 PA Cases)
-                </>
-              )}
+                            {ingestionRunning ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Processing 10 Denial Cases...
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Run Test Ingest (10 Denial Cases)
+                              </>
+                            )}
             </Button>
 
             {/* Progress Bar */}

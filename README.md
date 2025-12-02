@@ -21,7 +21,6 @@ The platform provides role-optimized views for different user types:
 - **Avg Time to Treat**: Shows average time to get patients treated (2.3 days, -1.5 days with AI)
 - **Quality Score**: Patient care quality metrics (94.2%, +3.1% this month)
 - Focus on patient outcomes, clinical urgency, and treatment readiness
-- Prior Auth tab shows "Can I Treat?" column with YES/NO/PENDING status
 
 **Executive View:**
 - **At Risk Amount**: Financial exposure from pending denials ($234,900.23)
@@ -52,7 +51,7 @@ Simulate new claims being ingested and validated through all 18 AI agents with a
 
 ### Re-Evaluation Feature
 
-A "Re-run AI Validation" button allows clinicians to re-evaluate existing denials or prior authorizations when:
+A "Re-run AI Validation" button allows clinicians to re-evaluate existing denials when:
 - Documentation has been updated
 - Policy changes have occurred
 - Time has passed and fresh analysis is needed
@@ -69,7 +68,7 @@ This creates an "Action Needed" badge indicating re-evaluation is recommended.
 
 ### Actionable Detail Drawers
 
-Click any denial or prior auth row to open a detail drawer with:
+Click any denial row to open a detail drawer with:
 
 **For Denials:**
 - AI recommended next action with confidence percentage
@@ -82,14 +81,6 @@ Click any denial or prior auth row to open a detail drawer with:
 - Activity timeline with appeal deadline
 - **AI Appeal Letter Generator** - One-click professional appeal letter generation
 
-**For Prior Authorizations:**
-- Denial risk percentage and documentation score
-- Procedure details (code, description, request date)
-- AI recommendations with pre-submission checklist
-- Risk assessment and payer requirements
-- Action buttons (Submit PA, Add Clinical Docs, Escalate/Peer Review)
-- Timeline with expected decision timeframe
-- **"Can I Treat?" Treatment Guidance** - Clear YES/NO/PENDING status with documentation checklist
 
 ### 18 AI Agents (12 Specialist + 6 Validation)
 
@@ -105,7 +96,7 @@ The platform uses 18 AI agents with diversified Azure OpenAI models for comprehe
 | Care Gap Detector | gpt-4.1 | Identifies gaps in patient care |
 | Clinical Urgency | gpt-4.1 | Scores time-sensitivity of cases |
 | Financial Value | gpt-4.1-mini | Calculates financial impact |
-| PA Risk Predictor | gpt-4.1-mini | Predicts prior auth denial risk |
+| Denial Risk Predictor | gpt-4.1-mini | Predicts denial risk factors |
 | Doc Completeness | gpt-4.1-mini | Checks documentation completeness |
 | Queue Wait Time | gpt-4.1-nano | Estimates processing time |
 | Policy Monitor | gpt-4.1-nano | Monitors payer policy changes |
@@ -129,8 +120,8 @@ Each recommendation displays: **Policy Match Grade**, **Viability Grade**, **Saf
 
 Three role-based views with different dashboard metrics and tab visibility:
 
-- **Clinical (Nurse/Staff)**: Dashboard (Avg Time to Treat, Quality Score), Prior Auth (Can I Treat?), Denials (Clinical Urgency, SDOH Risk), AI Agents - focused on patient care and treatment readiness
-- **Admin**: Dashboard (all metrics), Prior Auth, Denials, AI Agents, Payer - full operational view with financial and clinical data
+- **Clinical (Charge Nurse)**: Dashboard (835 Remittances, CARC/RARC Analysis), Denials (Clinical Urgency, SDOH Risk), AI Agents - focused on denial resolution and patient impact
+- **Admin**: Dashboard (all metrics), Denials, AI Agents, Payer - full operational view with financial and denial data
 - **Executive**: Dashboard (At Risk Amount, Recovery Rate, Training & Enhancement Opportunities), AI Agents, Learning, Payer - KPIs, trends, and staff training insights
 
 ## Synthetic Dataset
@@ -207,7 +198,6 @@ dashboard/
 **Fact Tables:**
 - fact_claim (1,000 claims)
 - fact_denial (288 denials with AI enrichment)
-- fact_prior_auth (200 prior authorizations)
 - fact_appeal (appeals tracking)
 - fact_rl_trace (500 RL traces for AI impact)
 - fact_treatment_guidance_result (AI-generated treatment guidance results)
@@ -222,10 +212,6 @@ dashboard/
 ### Denials
 - `GET /api/denials` - List denials with pagination/filtering
 - `POST /api/ai/analyze-denial/{id}` - AI analysis for a denial (all 18 agents)
-
-### Prior Auth
-- `GET /api/prior-auths` - List prior authorizations
-- `POST /api/ai/analyze-prior-auth/{id}` - AI analysis for a prior auth (all 18 agents)
 
 ### Analytics
 - `GET /api/analytics/resolution-trends` - Time-to-resolution trends
@@ -294,16 +280,12 @@ Executive view showing financial metrics and the new "Training & Enhancement Opp
 Clinical (Nurse/Staff) view showing "Avg Time to Treat" and "Quality Score" instead of cost metrics - focused on patient care outcomes.
 ![Clinical Dashboard](screenshots/02_clinical_dashboard.png)
 
-### Prior Auth Tab (Clinical View)
-Prior Auth list with "Can I Treat?" column showing YES/NO/PENDING status for each authorization. Includes working filters and search.
-![Prior Auth Clinical](screenshots/03_prior_auth_clinical.png)
-
 ### Denials Tab (Clinical View)
 Denials list with Clinical Urgency and SDOH Risk columns. Includes working status filters (All, New, In Review, Awaiting Docs, Appealed, Payer Pending, Resolved) and search.
 ![Denials Clinical](screenshots/04_denials_clinical.png)
 
 ### AI Agents Tab (18 Agents)
-Shows all 18 AI agents: 12 Core Agents + 6 Validation Agents using 7 different LLMs. Includes the "Test Ingest" button for simulating new prior auth cases.
+Shows all 18 AI agents: 12 Core Agents + 6 Validation Agents using 7 different LLMs. Includes the "Test Ingest" button for simulating new denial cases.
 ![AI Agents](screenshots/05_ai_agents.png)
 
 ### Denials Workflow Drawer
@@ -314,12 +296,8 @@ Detail drawer with AI recommendations, missing documentation checklist, P2P revi
 Shows validation grades (Policy Match, Viability, Safety Status) after running all 18 agents on a denial.
 ![Denials AI Analysis](screenshots/07_denials_ai_analysis.png)
 
-### Prior Auth Workflow Drawer
-Detail drawer with "Can I Treat?" guidance, denial risk assessment, documentation checklist, and treatment guidance.
-![Prior Auth Workflow](screenshots/08_prior_auth_workflow_drawer.png)
-
 ### Test Ingest Feature
-Simulates 10 new prior auth cases being processed through all 18 AI agents. Shows AI-resolved queue with one-click approval for low-risk cases.
+Simulates 10 new denial cases being processed through all 18 AI agents. Shows AI-resolved queue with one-click approval for low-risk cases.
 ![Test Ingest](screenshots/09_test_ingest.png)
 
 ### Re-Evaluation Progress
@@ -391,24 +369,17 @@ Adds clinical context to denial analysis:
 | dim_procedure | Epic FHIR Procedure resource | CPT/HCPCS codes, descriptions |
 | dim_physician | Epic FHIR Practitioner resource | NPI, specialty, credentials |
 
-### Phase 3: Prior Authorization Intelligence (6+ months)
+### Phase 3: Prior Authorization Intelligence (6+ months) - FUTURE ROADMAP
 **Data Source:** Payer portals (Availity, direct APIs), Epic PA module, RPA for stragglers
 **Complexity:** HIGH - Fragmented, payer-by-payer integration
 
-Real-time prior auth status aggregation:
+> **Note:** Prior Authorization features are NOT included in this POC. Real-time PA status requires complex payer-by-payer integrations that are not yet available. This phase is documented here for future roadmap planning only.
+
+Future capabilities (not implemented):
 - Multi-payer PA status tracking
 - "Can I Treat?" real-time guidance
 - PA denial prediction before submission
 - Automated follow-up scheduling
-
-**POC Entity Mapping:**
-| POC Table | Production Source | Key Fields |
-|-----------|------------------|------------|
-| fact_prior_auth | Epic PA module + payer APIs | auth_status, decision_date, denial_probability |
-| dim_treatment_guideline | InterQual, MCG, internal P&T | medical necessity criteria |
-| fact_treatment_guidance_result | AI evaluation results | can_treat status, missing criteria |
-
-> **Note:** The Prior Auth tab in this POC is labeled "Phase 3" to indicate this functionality requires complex payer integrations not yet available. The current implementation uses synthetic data to demonstrate the target workflow.
 
 ## RHAIL Compatibility
 
