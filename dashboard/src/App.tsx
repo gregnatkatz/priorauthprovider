@@ -36,14 +36,14 @@ const PERSONA_CONFIG = {
     icon: Users,
     description: 'Operations focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'payer']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'lifecycle', 'payer']
   },
   executive: {
     name: 'Executive',
     icon: Briefcase,
     description: 'Financial focus',
-    defaultTab: 'dashboard',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'learning', 'payer']
+    defaultTab: 'cfo',
+    visibleTabs: ['cfo', 'dashboard', 'denials', 'ai', 'lifecycle', 'learning', 'payer']
   }
 }
 import './App.css'
@@ -278,6 +278,24 @@ function App() {
     const [agentSummary, setAgentSummary] = useState<{ autoProcessed: number, needsReview: number, lowRisk: number, highRisk: number, claimsAnalyzed: number, denialsFound: number } | null>(null)
     const agentStepIndexRef = useRef<number>(-1)
     const feedAgentIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    
+    // CFO Dashboard state
+    const [cfoKpis, setCfoKpis] = useState<any>(null)
+    const [churnWaterfall, setChurnWaterfall] = useState<any>(null)
+    const [cashForecast, setCashForecast] = useState<any>(null)
+    const [budgetVariance, setBudgetVariance] = useState<any>(null)
+    const [payerPerformance, setPayerPerformance] = useState<any>(null)
+    const [executiveSummary, setExecutiveSummary] = useState<any>(null)
+    const [cfoLoading, setCfoLoading] = useState(false)
+    // Scenario modeler state
+    const [scenarioDenialRate, setScenarioDenialRate] = useState(18.5)
+    const [scenarioAppealSuccess, setScenarioAppealSuccess] = useState(67)
+    
+    // 837/835 Lifecycle state
+    const [lifecycleSources, setLifecycleSources] = useState<any[]>([])
+    const [highRiskClaims, setHighRiskClaims] = useState<any[]>([])
+    const [reconciliationData, setReconciliationData] = useState<any>(null)
+    const [lifecycleLoading, setLifecycleLoading] = useState(false)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -310,6 +328,10 @@ function App() {
       fetchLearningData()
     } else if (activeTab === 'payer') {
       fetchPayerData()
+    } else if (activeTab === 'cfo') {
+      fetchCFOData()
+    } else if (activeTab === 'lifecycle') {
+      fetchLifecycleData()
     }
   }, [activeTab, currentPage, statusFilter, searchTerm])
 
@@ -440,6 +462,46 @@ function App() {
       } catch (error) {
         console.error('Error fetching recovery rate:', error)
       }
+    }
+
+    const fetchCFOData = async () => {
+      setCfoLoading(true)
+      try {
+        const [kpisRes, waterfallRes, cashRes, budgetRes, payerPerfRes, summaryRes] = await Promise.all([
+          fetch(`${API_URL}/api/cfo/kpis`),
+          fetch(`${API_URL}/api/cfo/churn-waterfall`),
+          fetch(`${API_URL}/api/cfo/cash-forecast`),
+          fetch(`${API_URL}/api/cfo/budget-variance`),
+          fetch(`${API_URL}/api/cfo/payer-performance`),
+          fetch(`${API_URL}/api/cfo/executive-summary`)
+        ])
+        setCfoKpis(await kpisRes.json())
+        setChurnWaterfall(await waterfallRes.json())
+        setCashForecast(await cashRes.json())
+        setBudgetVariance(await budgetRes.json())
+        setPayerPerformance(await payerPerfRes.json())
+        setExecutiveSummary(await summaryRes.json())
+      } catch (error) {
+        console.error('Error fetching CFO data:', error)
+      }
+      setCfoLoading(false)
+    }
+
+    const fetchLifecycleData = async () => {
+      setLifecycleLoading(true)
+      try {
+        const [sourcesRes, highRiskRes, reconRes] = await Promise.all([
+          fetch(`${API_URL}/api/lifecycle/sources`),
+          fetch(`${API_URL}/api/lifecycle/high-risk-claims`),
+          fetch(`${API_URL}/api/lifecycle/reconciliation`)
+        ])
+        setLifecycleSources(await sourcesRes.json())
+        setHighRiskClaims((await highRiskRes.json()).claims || [])
+        setReconciliationData(await reconRes.json())
+      } catch (error) {
+        console.error('Error fetching lifecycle data:', error)
+      }
+      setLifecycleLoading(false)
     }
 
     // Helper functions for agent pipeline processing
@@ -3867,6 +3929,397 @@ function App() {
     </div>
   )
 
+  const renderCFODashboard = () => (
+    <div className="space-y-6">
+      {cfoLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <RefreshCw className="h-8 w-8 animate-spin mr-2" />
+          <span>Loading CFO Dashboard...</span>
+        </div>
+      ) : (
+        <>
+          {/* Executive Summary Banner */}
+          {executiveSummary && (
+            <Card className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 border-blue-700/50">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white mb-2">Executive Summary</h2>
+                    <p className="text-slate-300 max-w-3xl">{executiveSummary.narrative}</p>
+                  </div>
+                  <Badge variant="outline" className="text-blue-300 border-blue-500">
+                    {executiveSummary.period}
+                  </Badge>
+                </div>
+                {executiveSummary.key_actions && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {executiveSummary.key_actions.map((action: string, i: number) => (
+                      <Badge key={i} className="bg-blue-600/50">{action}</Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* KPI Cards - 8 metrics */}
+          {cfoKpis && (
+            <div className="grid grid-cols-4 gap-4">
+              {cfoKpis.kpis?.map((kpi: any, i: number) => (
+                <Card key={i} className="bg-slate-800/50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-400">{kpi.name}</span>
+                      <Badge variant={kpi.trend === 'up' ? 'default' : kpi.trend === 'down' ? 'destructive' : 'secondary'} className="text-xs">
+                        {kpi.delta > 0 ? '+' : ''}{kpi.delta}%
+                      </Badge>
+                    </div>
+                    <div className="text-2xl font-bold text-white">
+                      {kpi.format === 'currency' ? formatCurrency(kpi.value) : 
+                       kpi.format === 'percent' ? `${(kpi.value * 100).toFixed(1)}%` : 
+                       kpi.value.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">{kpi.description}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Churn Waterfall Chart */}
+          {churnWaterfall && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Churn Waterfall - MTD
+                </CardTitle>
+                <CardDescription>From billed amount to expected collection</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={churnWaterfall.stages}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Bar dataKey="value" fill="#3b82f6">
+                        {churnWaterfall.stages?.map((entry: any, index: number) => (
+                          <Cell key={index} fill={entry.type === 'positive' ? '#22c55e' : entry.type === 'negative' ? '#ef4444' : '#3b82f6'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 grid grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="text-sm text-slate-400">Billed</div>
+                    <div className="text-lg font-bold text-white">{formatCurrency(churnWaterfall.total_billed || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400">Contractual</div>
+                    <div className="text-lg font-bold text-red-400">-{formatCurrency(churnWaterfall.contractual_adj || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400">Denial Risk</div>
+                    <div className="text-lg font-bold text-orange-400">-{formatCurrency(churnWaterfall.denial_risk || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400">Expected</div>
+                    <div className="text-lg font-bold text-green-400">{formatCurrency(churnWaterfall.expected_collection || 0)}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-2 gap-6">
+            {/* Cash Forecast */}
+            {cashForecast && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Cash Flow Forecast
+                  </CardTitle>
+                  <CardDescription>30-day collection projection</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={cashForecast.forecast}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                        <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Area type="monotone" dataKey="expected" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="Expected" />
+                        <Area type="monotone" dataKey="optimistic" stroke="#22c55e" fill="#22c55e" fillOpacity={0.1} name="Optimistic" />
+                        <Area type="monotone" dataKey="pessimistic" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} name="Pessimistic" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Budget Variance */}
+            {budgetVariance && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Budget Variance
+                  </CardTitle>
+                  <CardDescription>Actual vs. budgeted collections</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={budgetVariance.months}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                        <YAxis tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar dataKey="actual" name="Actual" fill="#3b82f6" />
+                        <Bar dataKey="budget" name="Budget" fill="#94a3b8" />
+                        <Line type="monotone" dataKey="variance_pct" name="Variance %" stroke="#f59e0b" yAxisId="right" />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Payer Performance */}
+          {payerPerformance && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Payer Performance - Churn Analysis
+                </CardTitle>
+                <CardDescription>Churn rate and collection efficiency by payer</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Payer</TableHead>
+                      <TableHead>Billed MTD</TableHead>
+                      <TableHead>Expected Collection</TableHead>
+                      <TableHead>Churn Rate</TableHead>
+                      <TableHead>Denial Rate</TableHead>
+                      <TableHead>Avg Days to Pay</TableHead>
+                      <TableHead>Trend</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payerPerformance.payers?.map((payer: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{payer.name}</TableCell>
+                        <TableCell>{formatCurrency(payer.billed_mtd)}</TableCell>
+                        <TableCell>{formatCurrency(payer.expected_collection)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={payer.churn_rate * 100} className="w-16 h-2 [&>div]:bg-orange-500" />
+                            <span className="text-sm">{(payer.churn_rate * 100).toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={payer.denial_rate * 100} className="w-16 h-2 [&>div]:bg-red-500" />
+                            <span className="text-sm">{(payer.denial_rate * 100).toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{payer.avg_days_to_pay} days</TableCell>
+                        <TableCell>
+                          <Badge variant={payer.trend === 'improving' ? 'default' : payer.trend === 'declining' ? 'destructive' : 'secondary'}>
+                            {payer.trend}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  )
+
+  const renderLifecycle = () => (
+    <div className="space-y-6">
+      {lifecycleLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <RefreshCw className="h-8 w-8 animate-spin mr-2" />
+          <span>Loading Lifecycle Data...</span>
+        </div>
+      ) : (
+        <>
+          {/* Data Sources Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                837/835 Data Sources
+              </CardTitle>
+              <CardDescription>Clearinghouse and payer feed connections</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                {lifecycleSources.length > 0 ? lifecycleSources.map((source: any, i: number) => (
+                  <Card key={i} className="bg-slate-800/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">{source.name}</span>
+                        <Badge variant={source.status === 'active' ? 'default' : 'secondary'}>
+                          {source.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-slate-400">Type: {source.type}</div>
+                      <div className="text-sm text-slate-400">Last sync: {source.last_sync}</div>
+                      <div className="text-sm text-slate-400">Records: {source.record_count?.toLocaleString()}</div>
+                    </CardContent>
+                  </Card>
+                )) : (
+                  <div className="col-span-3 text-center py-8 text-slate-400">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No data sources configured</p>
+                    <p className="text-sm">Connect clearinghouse feeds to enable lifecycle tracking</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* High-Risk Claims */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                High-Risk Claims - Churn Prediction
+              </CardTitle>
+              <CardDescription>Claims with high predicted churn requiring intervention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Claim ID</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Procedure</TableHead>
+                    <TableHead>Payer</TableHead>
+                    <TableHead>Billed</TableHead>
+                    <TableHead>Churn Risk</TableHead>
+                    <TableHead>Risk Factors</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {highRiskClaims.length > 0 ? highRiskClaims.map((claim: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-mono text-sm">{claim.claim_id}</TableCell>
+                      <TableCell>{claim.patient_name}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{claim.procedure_code}</div>
+                          <div className="text-xs text-slate-400">{claim.procedure_name}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{claim.payer}</TableCell>
+                      <TableCell className="font-medium">{formatCurrency(claim.billed_amount)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={claim.churn_risk * 100} 
+                            className={`w-16 h-2 ${claim.churn_risk > 0.6 ? '[&>div]:bg-red-500' : claim.churn_risk > 0.4 ? '[&>div]:bg-orange-500' : '[&>div]:bg-yellow-500'}`} 
+                          />
+                          <span className={`text-sm font-medium ${claim.churn_risk > 0.6 ? 'text-red-400' : claim.churn_risk > 0.4 ? 'text-orange-400' : 'text-yellow-400'}`}>
+                            {(claim.churn_risk * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {claim.risk_factors?.slice(0, 2).map((factor: string, j: number) => (
+                            <Badge key={j} variant="outline" className="text-xs">{factor}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="outline" className="text-xs">
+                          {claim.recommended_action || 'Review'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-slate-400">
+                        No high-risk claims detected
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Reconciliation Summary */}
+          {reconciliationData && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  837/835 Reconciliation
+                </CardTitle>
+                <CardDescription>Claim submission to payment reconciliation</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-400">{reconciliationData.submitted_837?.toLocaleString() || 0}</div>
+                    <div className="text-sm text-slate-400">837 Submitted</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-400">{reconciliationData.matched_835?.toLocaleString() || 0}</div>
+                    <div className="text-sm text-slate-400">835 Matched</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-400">{reconciliationData.pending?.toLocaleString() || 0}</div>
+                    <div className="text-sm text-slate-400">Pending Response</div>
+                  </div>
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-400">{reconciliationData.variances?.toLocaleString() || 0}</div>
+                    <div className="text-sm text-slate-400">Variances</div>
+                  </div>
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={reconciliationData.timeline || []}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="submitted" stroke="#3b82f6" name="837 Submitted" />
+                      <Line type="monotone" dataKey="paid" stroke="#22c55e" name="835 Paid" />
+                      <Line type="monotone" dataKey="denied" stroke="#ef4444" name="835 Denied" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  )
+
   if (loading && !metrics) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -3958,6 +4411,12 @@ function App() {
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setCurrentPage(1); setStatusFilter('all') }}>
                     <TabsList className="mb-6">
+                      {PERSONA_CONFIG[persona].visibleTabs.includes('cfo') && (
+                        <TabsTrigger value="cfo" className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          CFO Dashboard
+                        </TabsTrigger>
+                      )}
                       {PERSONA_CONFIG[persona].visibleTabs.includes('dashboard') && (
                         <TabsTrigger value="dashboard" className="flex items-center gap-2">
                           <Activity className="h-4 w-4" />
@@ -3982,6 +4441,12 @@ function App() {
                           AI Agents
                         </TabsTrigger>
                       )}
+                      {PERSONA_CONFIG[persona].visibleTabs.includes('lifecycle') && (
+                        <TabsTrigger value="lifecycle" className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          837/835 Lifecycle
+                        </TabsTrigger>
+                      )}
                       {PERSONA_CONFIG[persona].visibleTabs.includes('learning') && (
                         <TabsTrigger value="learning" className="flex items-center gap-2">
                           <TrendingUp className="h-4 w-4" />
@@ -3996,10 +4461,12 @@ function App() {
                       )}
                     </TabsList>
 
+          <TabsContent value="cfo">{renderCFODashboard()}</TabsContent>
           <TabsContent value="dashboard">{renderDashboard()}</TabsContent>
           <TabsContent value="pa">{renderPriorAuths()}</TabsContent>
           <TabsContent value="denials">{renderDenials()}</TabsContent>
           <TabsContent value="ai">{renderAI()}</TabsContent>
+          <TabsContent value="lifecycle">{renderLifecycle()}</TabsContent>
           <TabsContent value="learning">{renderLearning()}</TabsContent>
           <TabsContent value="payer">{renderPayer()}</TabsContent>
         </Tabs>

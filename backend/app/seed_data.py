@@ -71,21 +71,57 @@ RARC_CODES = [
     {"code": "N657", "description": "This should be billed with the appropriate code for the service/supply provided"},
 ]
 
-# Payer data
+# Payer data - AdventHealth's primary payers
 PAYERS = [
-    {"name": "UnitedHealthcare", "type": "Commercial", "denial_rate": 0.18, "appeal_success": 0.52, "days_to_decision": 14},
-    {"name": "Anthem Blue Cross", "type": "Commercial", "denial_rate": 0.16, "appeal_success": 0.55, "days_to_decision": 12},
-    {"name": "Aetna", "type": "Commercial", "denial_rate": 0.15, "appeal_success": 0.58, "days_to_decision": 10},
-    {"name": "Cigna", "type": "Commercial", "denial_rate": 0.14, "appeal_success": 0.60, "days_to_decision": 11},
-    {"name": "Humana", "type": "Commercial", "denial_rate": 0.17, "appeal_success": 0.50, "days_to_decision": 15},
-    {"name": "Medicare Part A", "type": "Medicare", "denial_rate": 0.12, "appeal_success": 0.65, "days_to_decision": 30},
-    {"name": "Medicare Part B", "type": "Medicare", "denial_rate": 0.13, "appeal_success": 0.62, "days_to_decision": 30},
+    # Primary AdventHealth Payers (Medicare, BCBS FL, United, Aetna, Cigna, Humana)
+    {"name": "Medicare", "type": "Medicare", "denial_rate": 0.12, "appeal_success": 0.65, "days_to_decision": 30},
+    {"name": "BCBS FL", "type": "Commercial", "denial_rate": 0.18, "appeal_success": 0.57, "days_to_decision": 13},
+    {"name": "United", "type": "Commercial", "denial_rate": 0.20, "appeal_success": 0.52, "days_to_decision": 14},
+    {"name": "Aetna", "type": "Commercial", "denial_rate": 0.22, "appeal_success": 0.58, "days_to_decision": 10},
+    {"name": "Cigna", "type": "Commercial", "denial_rate": 0.16, "appeal_success": 0.60, "days_to_decision": 11},
+    {"name": "Humana", "type": "Commercial", "denial_rate": 0.19, "appeal_success": 0.50, "days_to_decision": 15},
+    # Secondary payers
     {"name": "Florida Medicaid", "type": "Medicaid", "denial_rate": 0.20, "appeal_success": 0.45, "days_to_decision": 45},
-    {"name": "Blue Cross Blue Shield FL", "type": "Commercial", "denial_rate": 0.15, "appeal_success": 0.57, "days_to_decision": 13},
-    {"name": "Molina Healthcare", "type": "Medicaid", "denial_rate": 0.19, "appeal_success": 0.48, "days_to_decision": 20},
     {"name": "Tricare", "type": "Government", "denial_rate": 0.11, "appeal_success": 0.70, "days_to_decision": 21},
-    {"name": "Workers Comp FL", "type": "Workers Comp", "denial_rate": 0.22, "appeal_success": 0.42, "days_to_decision": 35},
 ]
+
+# Payer-specific denial patterns for high-denial procedures
+PAYER_PROCEDURE_DENIAL_RATES = {
+    "BCBS FL": {
+        "J9271": 0.25,  # Stricter on oncology (Keytruda)
+        "70553": 0.32,  # RBM requirement for MRI
+        "J9299": 0.25,  # Opdivo
+        "78815": 0.38,  # PET scan
+    },
+    "Aetna": {
+        "27447": 0.30,  # Very strict on ortho (TKA)
+        "27130": 0.30,  # THA
+        "64483": 0.40,  # Pain management scrutiny
+        "22551": 0.35,  # Cervical fusion
+    },
+    "United": {
+        "70553": 0.28,  # Optum RBM
+        "78815": 0.38,  # PET scan restrictions
+        "72148": 0.30,  # MRI lumbar
+        "74177": 0.28,  # CT abdomen
+    },
+    "Medicare": {
+        "99215": 0.25,  # Downcoding risk
+        "J9271": 0.18,  # LCD-based (more predictable)
+        "99285": 0.22,  # ED level 5
+        "93458": 0.20,  # Left heart cath
+    },
+    "Cigna": {
+        "J9299": 0.22,  # Opdivo
+        "33361": 0.32,  # TAVR
+        "J9035": 0.28,  # Avastin
+    },
+    "Humana": {
+        "J2505": 0.22,  # Neulasta
+        "93653": 0.28,  # EP study
+        "33285": 0.25,  # Loop recorder
+    }
+}
 
 # AdventHealth facilities
 FACILITIES = [
@@ -101,33 +137,149 @@ FACILITIES = [
     {"name": "AdventHealth Palm Coast", "type": "Hospital", "beds": 99, "city": "Palm Coast", "state": "FL"},
 ]
 
-# Common procedures with PA requirements
+# High-denial procedures for realistic AdventHealth demo
+# Based on AdventHealth's service mix (55 hospitals, cancer centers, heart institutes, orthopedics)
+HIGH_DENIAL_PROCEDURES = {
+    # Imaging (Highest Denial Category)
+    "70553": {"name": "MRI Brain w/wo contrast", "avg_billed": 2800, "denial_rate": 0.30, "category": "imaging", "denial_reason": "Pre-cert required, medical necessity"},
+    "74177": {"name": "CT Abdomen/Pelvis w/contrast", "avg_billed": 1800, "denial_rate": 0.24, "category": "imaging", "denial_reason": "Overutilization scrutiny"},
+    "78815": {"name": "PET Scan (Tumor Imaging)", "avg_billed": 6500, "denial_rate": 0.35, "category": "imaging", "denial_reason": "Prior auth + LCD criteria"},
+    "93306": {"name": "Echocardiogram complete", "avg_billed": 850, "denial_rate": 0.22, "category": "imaging", "denial_reason": "Frequency limits"},
+    "71271": {"name": "CT Chest low-dose lung cancer screen", "avg_billed": 350, "denial_rate": 0.26, "category": "imaging", "denial_reason": "Specific eligibility criteria"},
+    
+    # Surgery/Procedural
+    "27447": {"name": "Total Knee Replacement", "avg_billed": 28000, "denial_rate": 0.25, "category": "surgery", "denial_reason": "PA required, BMI/conservative tx first"},
+    "27130": {"name": "Total Hip Replacement", "avg_billed": 32000, "denial_rate": 0.25, "category": "surgery", "denial_reason": "PA required, conservative tx first"},
+    "22551": {"name": "Cervical Fusion (ACDF)", "avg_billed": 45000, "denial_rate": 0.30, "category": "surgery", "denial_reason": "Medical necessity, conservative tx"},
+    "43239": {"name": "Upper GI Endoscopy w/biopsy", "avg_billed": 2200, "denial_rate": 0.18, "category": "surgery", "denial_reason": "Frequency, medical necessity"},
+    "64483": {"name": "Epidural Injection", "avg_billed": 3200, "denial_rate": 0.33, "category": "pain", "denial_reason": "Step therapy, frequency limits"},
+    
+    # Oncology (J-Codes) - Big $ at Risk
+    "J9271": {"name": "Pembrolizumab (Keytruda)", "avg_billed": 45000, "denial_rate": 0.22, "category": "oncology", "denial_reason": "PA required, specific indications"},
+    "J9299": {"name": "Nivolumab (Opdivo)", "avg_billed": 38000, "denial_rate": 0.22, "category": "oncology", "denial_reason": "PA required, specific indications"},
+    "J9035": {"name": "Bevacizumab (Avastin)", "avg_billed": 8500, "denial_rate": 0.25, "category": "oncology", "denial_reason": "Off-label use scrutiny"},
+    "J2505": {"name": "Pegfilgrastim (Neulasta)", "avg_billed": 6800, "denial_rate": 0.18, "category": "oncology", "denial_reason": "Medical necessity timing"},
+    "J9305": {"name": "Pemetrexed (Alimta)", "avg_billed": 12000, "denial_rate": 0.26, "category": "oncology", "denial_reason": "Line of therapy requirements"},
+    
+    # Cardiology (AdventHealth Heart Institute)
+    "93458": {"name": "Left Heart Cath w/imaging", "avg_billed": 12000, "denial_rate": 0.22, "category": "cardiology", "denial_reason": "Medical necessity, prior testing"},
+    "33361": {"name": "TAVR (Transcatheter Aortic Valve)", "avg_billed": 85000, "denial_rate": 0.30, "category": "cardiology", "denial_reason": "Very high $ - strict PA"},
+    "93653": {"name": "EP Study + Ablation", "avg_billed": 18000, "denial_rate": 0.24, "category": "cardiology", "denial_reason": "PA required"},
+    "33285": {"name": "Implantable Loop Recorder", "avg_billed": 8500, "denial_rate": 0.25, "category": "cardiology", "denial_reason": "Medical necessity criteria"},
+    
+    # E/M Codes (Volume Play)
+    "99215": {"name": "Office Visit Level 5", "avg_billed": 250, "denial_rate": 0.35, "category": "em", "denial_reason": "Downcoded to 99214"},
+    "99223": {"name": "Initial Hospital Care Level 3", "avg_billed": 350, "denial_rate": 0.22, "category": "em", "denial_reason": "Documentation insufficiency"},
+    "99291": {"name": "Critical Care 30-74 min", "avg_billed": 450, "denial_rate": 0.24, "category": "em", "denial_reason": "Time documentation"},
+    "99285": {"name": "ED Visit Level 5", "avg_billed": 950, "denial_rate": 0.30, "category": "em", "denial_reason": "Downcoded, medical necessity"},
+}
+
+# Common procedures with PA requirements (expanded with high-denial codes)
 PROCEDURES = [
+    # E/M Codes (high volume)
     {"code": "99213", "type": "CPT", "desc": "Office visit, established patient, low complexity", "category": "E&M", "pa_required": False, "medicare_rate": 92.0, "denial_risk": 0.05},
     {"code": "99214", "type": "CPT", "desc": "Office visit, established patient, moderate complexity", "category": "E&M", "pa_required": False, "medicare_rate": 130.0, "denial_risk": 0.08},
-    {"code": "99215", "type": "CPT", "desc": "Office visit, established patient, high complexity", "category": "E&M", "pa_required": False, "medicare_rate": 175.0, "denial_risk": 0.12},
+    {"code": "99215", "type": "CPT", "desc": "Office visit, established patient, high complexity", "category": "E&M", "pa_required": False, "medicare_rate": 250.0, "denial_risk": 0.35},
+    {"code": "99223", "type": "CPT", "desc": "Initial hospital care, high complexity", "category": "E&M", "pa_required": False, "medicare_rate": 350.0, "denial_risk": 0.22},
     {"code": "99283", "type": "CPT", "desc": "Emergency department visit, moderate severity", "category": "E&M", "pa_required": False, "medicare_rate": 145.0, "denial_risk": 0.10},
     {"code": "99284", "type": "CPT", "desc": "Emergency department visit, high severity", "category": "E&M", "pa_required": False, "medicare_rate": 252.0, "denial_risk": 0.12},
-    {"code": "99285", "type": "CPT", "desc": "Emergency department visit, high severity with threat to life", "category": "E&M", "pa_required": False, "medicare_rate": 387.0, "denial_risk": 0.15},
-    {"code": "27447", "type": "CPT", "desc": "Total knee arthroplasty", "category": "Surgery", "pa_required": True, "medicare_rate": 1450.0, "denial_risk": 0.25},
-    {"code": "27130", "type": "CPT", "desc": "Total hip arthroplasty", "category": "Surgery", "pa_required": True, "medicare_rate": 1520.0, "denial_risk": 0.28},
-    {"code": "43239", "type": "CPT", "desc": "Upper GI endoscopy with biopsy", "category": "Surgery", "pa_required": False, "medicare_rate": 285.0, "denial_risk": 0.10},
-    {"code": "45380", "type": "CPT", "desc": "Colonoscopy with biopsy", "category": "Surgery", "pa_required": False, "medicare_rate": 320.0, "denial_risk": 0.08},
-    {"code": "70553", "type": "CPT", "desc": "MRI brain with and without contrast", "category": "Radiology", "pa_required": True, "medicare_rate": 425.0, "denial_risk": 0.22},
-    {"code": "71271", "type": "CPT", "desc": "CT thorax, low dose for lung cancer screening", "category": "Radiology", "pa_required": False, "medicare_rate": 175.0, "denial_risk": 0.12},
-    {"code": "72148", "type": "CPT", "desc": "MRI lumbar spine without contrast", "category": "Radiology", "pa_required": True, "medicare_rate": 380.0, "denial_risk": 0.20},
-    {"code": "73721", "type": "CPT", "desc": "MRI joint of lower extremity", "category": "Radiology", "pa_required": True, "medicare_rate": 395.0, "denial_risk": 0.18},
+    {"code": "99285", "type": "CPT", "desc": "Emergency department visit, level 5", "category": "E&M", "pa_required": False, "medicare_rate": 950.0, "denial_risk": 0.30},
+    {"code": "99291", "type": "CPT", "desc": "Critical care, first 30-74 minutes", "category": "E&M", "pa_required": False, "medicare_rate": 450.0, "denial_risk": 0.24},
+    
+    # Imaging (Highest Denial Category)
+    {"code": "70553", "type": "CPT", "desc": "MRI brain with and without contrast", "category": "Radiology", "pa_required": True, "medicare_rate": 2800.0, "denial_risk": 0.30},
+    {"code": "74177", "type": "CPT", "desc": "CT abdomen/pelvis with contrast", "category": "Radiology", "pa_required": True, "medicare_rate": 1800.0, "denial_risk": 0.24},
+    {"code": "78815", "type": "CPT", "desc": "PET scan tumor imaging", "category": "Radiology", "pa_required": True, "medicare_rate": 6500.0, "denial_risk": 0.35},
+    {"code": "71271", "type": "CPT", "desc": "CT chest low-dose lung cancer screening", "category": "Radiology", "pa_required": True, "medicare_rate": 350.0, "denial_risk": 0.26},
+    {"code": "72148", "type": "CPT", "desc": "MRI lumbar spine without contrast", "category": "Radiology", "pa_required": True, "medicare_rate": 2800.0, "denial_risk": 0.28},
+    {"code": "73721", "type": "CPT", "desc": "MRI joint of lower extremity", "category": "Radiology", "pa_required": True, "medicare_rate": 2200.0, "denial_risk": 0.22},
+    
+    # Surgery/Procedural (High $ at risk)
+    {"code": "27447", "type": "CPT", "desc": "Total knee arthroplasty (TKA)", "category": "Surgery", "pa_required": True, "medicare_rate": 28000.0, "denial_risk": 0.25},
+    {"code": "27130", "type": "CPT", "desc": "Total hip arthroplasty (THA)", "category": "Surgery", "pa_required": True, "medicare_rate": 32000.0, "denial_risk": 0.25},
+    {"code": "22551", "type": "CPT", "desc": "Cervical fusion (ACDF)", "category": "Surgery", "pa_required": True, "medicare_rate": 45000.0, "denial_risk": 0.30},
+    {"code": "43239", "type": "CPT", "desc": "Upper GI endoscopy with biopsy", "category": "Surgery", "pa_required": False, "medicare_rate": 2200.0, "denial_risk": 0.18},
+    {"code": "45380", "type": "CPT", "desc": "Colonoscopy with biopsy", "category": "Surgery", "pa_required": False, "medicare_rate": 1800.0, "denial_risk": 0.08},
+    {"code": "64483", "type": "CPT", "desc": "Epidural injection", "category": "Pain", "pa_required": True, "medicare_rate": 3200.0, "denial_risk": 0.33},
+    
+    # Cardiology (AdventHealth Heart Institute)
     {"code": "93000", "type": "CPT", "desc": "Electrocardiogram, complete", "category": "Cardiology", "pa_required": False, "medicare_rate": 45.0, "denial_risk": 0.05},
-    {"code": "93306", "type": "CPT", "desc": "Echocardiography, complete", "category": "Cardiology", "pa_required": False, "medicare_rate": 285.0, "denial_risk": 0.10},
-    {"code": "93458", "type": "CPT", "desc": "Cardiac catheterization", "category": "Cardiology", "pa_required": True, "medicare_rate": 850.0, "denial_risk": 0.20},
+    {"code": "93306", "type": "CPT", "desc": "Echocardiography, complete", "category": "Cardiology", "pa_required": False, "medicare_rate": 850.0, "denial_risk": 0.22},
+    {"code": "93458", "type": "CPT", "desc": "Left heart catheterization with imaging", "category": "Cardiology", "pa_required": True, "medicare_rate": 12000.0, "denial_risk": 0.22},
+    {"code": "33361", "type": "CPT", "desc": "TAVR (Transcatheter Aortic Valve Replacement)", "category": "Cardiology", "pa_required": True, "medicare_rate": 85000.0, "denial_risk": 0.30},
+    {"code": "93653", "type": "CPT", "desc": "EP study with ablation", "category": "Cardiology", "pa_required": True, "medicare_rate": 18000.0, "denial_risk": 0.24},
+    {"code": "33285", "type": "CPT", "desc": "Implantable loop recorder", "category": "Cardiology", "pa_required": True, "medicare_rate": 8500.0, "denial_risk": 0.25},
+    
+    # Oncology J-Codes (Big $ at Risk)
+    {"code": "J9271", "type": "HCPCS", "desc": "Pembrolizumab (Keytruda)", "category": "Oncology", "pa_required": True, "medicare_rate": 45000.0, "denial_risk": 0.22},
+    {"code": "J9299", "type": "HCPCS", "desc": "Nivolumab (Opdivo)", "category": "Oncology", "pa_required": True, "medicare_rate": 38000.0, "denial_risk": 0.22},
+    {"code": "J9035", "type": "HCPCS", "desc": "Bevacizumab (Avastin)", "category": "Oncology", "pa_required": True, "medicare_rate": 8500.0, "denial_risk": 0.25},
+    {"code": "J2505", "type": "HCPCS", "desc": "Pegfilgrastim (Neulasta)", "category": "Oncology", "pa_required": True, "medicare_rate": 6800.0, "denial_risk": 0.18},
+    {"code": "J9305", "type": "HCPCS", "desc": "Pemetrexed (Alimta)", "category": "Oncology", "pa_required": True, "medicare_rate": 12000.0, "denial_risk": 0.26},
+    
+    # Other common procedures
     {"code": "J0585", "type": "HCPCS", "desc": "Botulinum toxin type A", "category": "Drug", "pa_required": True, "medicare_rate": 520.0, "denial_risk": 0.30},
     {"code": "J1745", "type": "HCPCS", "desc": "Infliximab injection", "category": "Drug", "pa_required": True, "medicare_rate": 1250.0, "denial_risk": 0.35},
-    {"code": "J2505", "type": "HCPCS", "desc": "Pegfilgrastim injection", "category": "Drug", "pa_required": True, "medicare_rate": 3800.0, "denial_risk": 0.25},
     {"code": "90834", "type": "CPT", "desc": "Psychotherapy, 45 minutes", "category": "Behavioral Health", "pa_required": False, "medicare_rate": 105.0, "denial_risk": 0.15},
     {"code": "90837", "type": "CPT", "desc": "Psychotherapy, 60 minutes", "category": "Behavioral Health", "pa_required": False, "medicare_rate": 155.0, "denial_risk": 0.18},
     {"code": "97110", "type": "CPT", "desc": "Therapeutic exercises", "category": "Physical Therapy", "pa_required": False, "medicare_rate": 35.0, "denial_risk": 0.12},
     {"code": "97140", "type": "CPT", "desc": "Manual therapy techniques", "category": "Physical Therapy", "pa_required": False, "medicare_rate": 38.0, "denial_risk": 0.14},
     {"code": "G0438", "type": "HCPCS", "desc": "Annual wellness visit, initial", "category": "Preventive", "pa_required": False, "medicare_rate": 175.0, "denial_risk": 0.08},
+]
+
+# Demo scenarios for AdventHealth presentation
+DEMO_SCENARIOS = [
+    {
+        "name": "Scenario 1: The $45K Oncology Claim",
+        "patient_type": "Cancer patient needing Keytruda infusion",
+        "procedure_code": "J9271",
+        "procedure_name": "Pembrolizumab (Keytruda)",
+        "billed_amount": 45000,
+        "payer": "BCBS FL",
+        "churn_risk": 0.72,
+        "risk_level": "HIGH",
+        "risk_factors": [
+            {"factor": "No prior auth on file", "impact": 0.35},
+            {"factor": "Off-label indication (not in FDA label)", "impact": 0.25},
+            {"factor": "Missing genetic testing results (PD-L1)", "impact": 0.12}
+        ],
+        "preventive_action": "Submit PA with PD-L1 test results NOW",
+        "potential_save": 32400
+    },
+    {
+        "name": "Scenario 2: The Orthopedic Bundle",
+        "patient_type": "68-year-old needing total knee replacement",
+        "procedure_code": "27447",
+        "procedure_name": "Total Knee Arthroplasty (TKA)",
+        "billed_amount": 28000,
+        "payer": "Aetna",
+        "churn_risk": 0.58,
+        "risk_level": "MEDIUM-HIGH",
+        "risk_factors": [
+            {"factor": "BMI 38 (payer requires <40 but scrutinizes >35)", "impact": 0.20},
+            {"factor": "Only 4 weeks PT documented (payer wants 6+)", "impact": 0.25},
+            {"factor": "Missing X-ray report in submission", "impact": 0.13}
+        ],
+        "preventive_action": "Attach PT notes showing 6 weeks conservative treatment",
+        "potential_save": 16240
+    },
+    {
+        "name": "Scenario 3: The Imaging Cascade",
+        "patient_type": "Back pain patient getting MRI",
+        "procedure_code": "72148",
+        "procedure_name": "MRI Lumbar Spine w/o contrast",
+        "billed_amount": 2800,
+        "payer": "United",
+        "churn_risk": 0.45,
+        "risk_level": "MEDIUM",
+        "risk_factors": [
+            {"factor": "No conservative treatment documented", "impact": 0.18},
+            {"factor": "Radiology benefit manager (RBM) pre-cert missing", "impact": 0.20},
+            {"factor": "Similar MRI done 10 months ago (frequency limit)", "impact": 0.07}
+        ],
+        "preventive_action": "Get RBM authorization before submission",
+        "potential_save": 1260
+    }
 ]
 
 # Physician specialties
