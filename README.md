@@ -49,6 +49,41 @@ The platform demonstrates that staff following AI recommendations achieve signif
 
 Simulate new claims being ingested and validated through all 18 AI agents with a real-time progress bar showing each agent's validation status. The simulator demonstrates the full validation pipeline from ingestion to database storage.
 
+### Live Azure AI Agents During Feed Ingestion
+
+When you click "Availity Feed" or "Change Healthcare", the system now calls **live Azure AI agents** to analyze each denial in real-time. This includes:
+
+**Background Task Architecture:**
+- Feed ingestion returns immediately with `status: "ai_running"` while AI processes in background
+- Avoids HTTP timeouts by running AI analysis asynchronously
+- Each denial is analyzed by all 18 AI agents (12 specialist + 6 validation)
+- Results are stored in the database and displayed in the Denials tab
+
+**Retry Logic with Exponential Backoff:**
+- 3 retry attempts for each AI agent call
+- Exponential backoff delays: 1s, 2s, 4s between retries
+- Graceful fallback to simulated responses if all retries fail
+- Handles transient Azure OpenAI errors automatically
+
+**Concurrency Protection:**
+- SQLite WAL mode enabled for better concurrent access
+- Global lock prevents concurrent feed ingestions
+- `ai_processing_active` flag rejects overlapping requests
+- 60-second database timeout for long-running operations
+
+**Pipeline Visualization:**
+The 8-step agentic workflow pipeline shows real-time progress:
+1. Intake & Normalization - Parse 835 EDI and normalize claim records
+2. Eligibility & Coverage - Verify member eligibility and coverage
+3. Coding & Modifiers - Validate CPT/ICD codes and modifiers
+4. Medical Necessity - Check clinical criteria and medical necessity
+5. Timely Filing Check - Verify submission within payer deadlines
+6. Documentation Review - Check for missing clinical documentation
+7. Appeal Strategy - Determine optimal appeal approach
+8. Risk Triage & Routing - Assign risk level and route for action
+
+Each step shows status (Auto-processed/Needs Review) and risk level (low/medium/high).
+
 ### Re-Evaluation Feature
 
 A "Re-run AI Validation" button allows clinicians to re-evaluate existing denials when:
@@ -311,6 +346,18 @@ Introduces demo changes (policy updates, new documentation, patient status chang
 ### Action Needed Badge
 Yellow "Re-evaluation Recommended" badge appears after changes are detected, prompting staff to re-run AI validation.
 ![Action Needed](screenshots/12_action_needed_badge.png)
+
+### Live AI Pipeline Processing
+Shows the 8-step agentic workflow pipeline processing claims through live Azure AI agents. Step 1 (Intake & Normalization) is currently processing.
+![Live AI Pipeline Processing](screenshots/13_live_ai_pipeline_processing.png)
+
+### Live AI Pipeline Complete
+All 8 pipeline steps completed with status indicators. Shows "Auto-processed" (low/medium risk) and "Needs Review" (high risk) for each step.
+![Live AI Pipeline Complete](screenshots/14_live_ai_pipeline_complete.png)
+
+### Live AI Pipeline Summary
+Summary showing "6 steps auto-processed", "2 steps need human review", and risk breakdown. Pipeline complete message indicates items flagged for nurse review.
+![Live AI Pipeline Summary](screenshots/15_live_ai_pipeline_summary.png)
 
 ## Technology Stack
 
