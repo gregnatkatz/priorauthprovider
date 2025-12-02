@@ -412,26 +412,40 @@ function App() {
       }
     }
 
-    // AI agent steps to show during feed ingestion
-    const FEED_AGENT_STEPS = [
-      "Validating claim format and structure...",
-      "Checking patient eligibility and coverage...",
-      "Analyzing CARC/RARC denial codes...",
-      "Calculating appeal probability scores...",
-      "Prioritizing by recovery potential...",
-      "Generating AI recommendations..."
+    // 18 AI agents that process each feed
+    const FEED_AGENTS = [
+      "Eligibility Check",
+      "Coverage Verify",
+      "Policy Match",
+      "Medical Necessity",
+      "Coding Review",
+      "Modifier Check",
+      "Timely Filing",
+      "Duplicate Scan",
+      "Bundling Rules",
+      "Prior Auth Match",
+      "Level of Care",
+      "Site of Service",
+      "Doc Gaps",
+      "Appeal Strategy",
+      "Financial Impact",
+      "SDOH Risk",
+      "P2P Escalation",
+      "Safety Check"
     ]
 
     const triggerFeedIngestion = async (source: string) => {
       setFeedRunning(true)
       
-      // Start cycling through agent steps
-      let stepIndex = 0
-      setFeedAgentStep(FEED_AGENT_STEPS[0])
+      // Start cycling through agents visually
+      let agentIndex = 0
+      setFeedAgentStep(FEED_AGENTS[0])
       feedAgentIntervalRef.current = setInterval(() => {
-        stepIndex = (stepIndex + 1) % FEED_AGENT_STEPS.length
-        setFeedAgentStep(FEED_AGENT_STEPS[stepIndex])
-      }, 400)
+        agentIndex++
+        if (agentIndex < FEED_AGENTS.length) {
+          setFeedAgentStep(FEED_AGENTS[agentIndex])
+        }
+      }, 150) // Fast animation to show all 18 agents
       
       try {
         const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
@@ -451,12 +465,16 @@ function App() {
       } catch (error) {
         console.error('Error triggering feed ingestion:', error)
       } finally {
-        // Stop agent animation
+        // Stop agent animation and mark all complete
         if (feedAgentIntervalRef.current) {
           clearInterval(feedAgentIntervalRef.current)
           feedAgentIntervalRef.current = null
         }
-        setFeedAgentStep(null)
+        setFeedAgentStep('complete')
+        // Keep "complete" state visible briefly, then clear
+        setTimeout(() => {
+          if (!feedRunning) setFeedAgentStep(null)
+        }, 2000)
         setFeedRunning(false)
       }
     }
@@ -3202,14 +3220,51 @@ function App() {
                     Next feed in: <span className="font-mono text-emerald-400">{autoFeedCountdown}s</span>
                   </span>
                 </div>
-                {/* AI Agent Processing Animation */}
-                {feedAgentStep && (
-                  <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded flex items-center gap-2">
-                    <RefreshCw className="h-3 w-3 text-blue-400 animate-spin" />
-                    <span className="text-blue-300 text-sm font-medium">{feedAgentStep}</span>
+                
+                {/* AI Agent Processing Grid - Visual representation of 18 agents */}
+                {(feedAgentStep || feedRunning) && (
+                  <div className="mt-3">
+                    <p className="text-xs text-slate-400 mb-2">18 AI agents analyzing this feed:</p>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
+                      {FEED_AGENTS.map((agent, idx) => {
+                        const currentAgentIndex = feedAgentStep === 'complete' 
+                          ? FEED_AGENTS.length 
+                          : FEED_AGENTS.indexOf(feedAgentStep || '')
+                        const isDone = currentAgentIndex > idx || feedAgentStep === 'complete'
+                        const isActive = currentAgentIndex === idx && feedAgentStep !== 'complete'
+                        
+                        return (
+                          <div
+                            key={agent}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border transition-all duration-200 ${
+                              isDone 
+                                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300' 
+                                : isActive 
+                                  ? 'bg-blue-500/20 border-blue-400/50 text-blue-300 animate-pulse' 
+                                  : 'bg-slate-800/60 border-slate-700/50 text-slate-500'
+                            }`}
+                          >
+                            {isDone ? (
+                              <CheckCircle className="h-3 w-3 flex-shrink-0" />
+                            ) : isActive ? (
+                              <RefreshCw className="h-3 w-3 flex-shrink-0 animate-spin" />
+                            ) : (
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                            )}
+                            <span className="truncate">{agent}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {feedAgentStep === 'complete' && (
+                      <p className="mt-2 text-xs text-emerald-400 font-medium">
+                        18/18 AI agents completed analysis
+                      </p>
+                    )}
                   </div>
                 )}
-                {lastFeedResult && !feedAgentStep && (
+                
+                {lastFeedResult && !feedAgentStep && !feedRunning && (
                   <p className="text-xs text-slate-400 mt-2">
                     Last: {lastFeedResult.claims} claims ({lastFeedResult.denials} denials) from {lastFeedResult.source} at {lastFeedResult.time.toLocaleTimeString()}
                   </p>
