@@ -152,8 +152,8 @@ class DenialResponse(BaseModel):
     
     # AI Agent Enrichments
     patient_sdoh_score: Optional[float] = None
-    patient_vulnerability_flag: bool = False
-    care_gap_identified: bool = False
+    patient_vulnerability_flag: Optional[bool] = False
+    care_gap_identified: Optional[bool] = False
     care_gap_description: Optional[str] = None
     clinical_urgency_score: Optional[float] = None
     medical_necessity_flag: Optional[bool] = None
@@ -161,7 +161,7 @@ class DenialResponse(BaseModel):
     financial_priority_score: Optional[float] = None
     appeal_success_probability: Optional[float] = None
     recommended_action: Optional[str] = None
-    p2p_recommended: bool = False
+    p2p_recommended: Optional[bool] = False
     root_cause_category: Optional[str] = None
     prevention_recommendation: Optional[str] = None
     priority_score: Optional[float] = None
