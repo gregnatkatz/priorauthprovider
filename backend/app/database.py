@@ -1,27 +1,43 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+import sqlite3
 
 DATABASE_URL = "sqlite+aiosqlite:///./denial_management.db"
 SYNC_DATABASE_URL = "sqlite:///./denial_management.db"
+
+# Enable WAL mode for better concurrency
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    if isinstance(dbapi_conn, sqlite3.Connection):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=60000")  # 60 second timeout
+        cursor.close()
 
 # Configure SQLite for better concurrency with WAL mode and timeout
 async_engine = create_async_engine(
     DATABASE_URL, 
     echo=False,
-    connect_args={"timeout": 30, "check_same_thread": False}
+    connect_args={"timeout": 60, "check_same_thread": False},
+    pool_pre_ping=True
 )
 sync_engine = create_engine(
     SYNC_DATABASE_URL, 
     echo=False,
-    connect_args={"timeout": 30, "check_same_thread": False}
+    connect_args={"timeout": 60, "check_same_thread": False}
 )
+
+# Apply WAL mode to sync engine
+event.listen(sync_engine, "connect", set_sqlite_pragma)
 
 AsyncSessionLocal = sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
     expire_on_commit=False
 )
+
+# Alias for background tasks
+async_session_maker = AsyncSessionLocal
 
 Base = declarative_base()
 
