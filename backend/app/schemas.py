@@ -183,6 +183,10 @@ class DenialResponse(BaseModel):
     queue_wait_time_seconds: Optional[int] = None  # Time in seconds since denial was created
     queue_wait_time_display: Optional[str] = None  # Human-readable format (e.g., "2h 15m", "1d 4h")
     
+    # Live AI Agent Results
+    ai_risk_level: Optional[str] = None  # LOW, MEDIUM, HIGH - from live AI agents
+    ai_recommended_action: Optional[str] = None  # AI-generated recommendation
+    
     class Config:
         from_attributes = True
 
