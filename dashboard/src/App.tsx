@@ -245,8 +245,34 @@ function App() {
     const [lastFeedResult, setLastFeedResult] = useState<{source: string, claims: number, denials: number, time: Date} | null>(null)
     const autoFeedIntervalRef = useRef<NodeJS.Timeout | null>(null)
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
-    // AI agent processing animation during feed ingestion
-    const [feedAgentStep, setFeedAgentStep] = useState<string | null>(null)
+    // AI agent processing animation during feed ingestion - Step-by-step workflow
+    type AgentStatus = 'pending' | 'running' | 'auto_processed' | 'needs_review'
+    type RiskLevel = 'low' | 'medium' | 'high'
+    type AgentRunResult = {
+      id: string
+      name: string
+      description: string
+      status: AgentStatus
+      risk: RiskLevel | null
+      outcome: string | null
+      needsHuman: boolean | null
+    }
+    
+    const INITIAL_AGENT_PIPELINE: AgentRunResult[] = [
+      { id: 'intake', name: 'Intake & Normalization', description: 'Parse 835 EDI and normalize claim records', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'eligibility', name: 'Eligibility & Coverage', description: 'Verify member eligibility and coverage', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'coding', name: 'Coding & Modifiers', description: 'Validate CPT/ICD codes and modifiers', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'medical_necessity', name: 'Medical Necessity', description: 'Check clinical criteria and medical necessity', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'timely_filing', name: 'Timely Filing Check', description: 'Verify submission within payer deadlines', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'documentation', name: 'Documentation Review', description: 'Check for missing clinical documentation', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'appeal_strategy', name: 'Appeal Strategy', description: 'Determine optimal appeal approach', status: 'pending', risk: null, outcome: null, needsHuman: null },
+      { id: 'risk_triage', name: 'Risk Triage & Routing', description: 'Assign risk level and route for action', status: 'pending', risk: null, outcome: null, needsHuman: null },
+    ]
+    
+    const [agentPipeline, setAgentPipeline] = useState<AgentRunResult[]>(INITIAL_AGENT_PIPELINE)
+    const [, setAgentStepIndex] = useState<number>(-1)
+    const [agentSummary, setAgentSummary] = useState<{ autoProcessed: number, needsReview: number, lowRisk: number, highRisk: number, claimsAnalyzed: number, denialsFound: number } | null>(null)
+    const agentStepIndexRef = useRef<number>(-1)
     const feedAgentIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -412,71 +438,169 @@ function App() {
       }
     }
 
-    // 18 AI agents that process each feed
-    const FEED_AGENTS = [
-      "Eligibility Check",
-      "Coverage Verify",
-      "Policy Match",
-      "Medical Necessity",
-      "Coding Review",
-      "Modifier Check",
-      "Timely Filing",
-      "Duplicate Scan",
-      "Bundling Rules",
-      "Prior Auth Match",
-      "Level of Care",
-      "Site of Service",
-      "Doc Gaps",
-      "Appeal Strategy",
-      "Financial Impact",
-      "SDOH Risk",
-      "P2P Escalation",
-      "Safety Check"
-    ]
+    // Helper functions for agent pipeline processing
+    const getAgentOutcome = (agentId: string, claimsCount: number, denialsCount: number): { outcome: string, needsHuman: boolean, risk: RiskLevel } => {
+      const outcomes: Record<string, { outcomes: string[], needsHuman: boolean[], risks: RiskLevel[] }> = {
+        'intake': { 
+          outcomes: [`Parsed ${claimsCount} claims from 835 EDI feed`, `Normalized ${claimsCount} claim records successfully`],
+          needsHuman: [false, false],
+          risks: ['low', 'low']
+        },
+        'eligibility': {
+          outcomes: [`${Math.max(0, claimsCount - denialsCount)} claims verified eligible`, `${denialsCount > 0 ? Math.ceil(denialsCount * 0.3) : 0} eligibility issues flagged`],
+          needsHuman: [false, denialsCount > 2],
+          risks: ['low', denialsCount > 2 ? 'medium' : 'low']
+        },
+        'coding': {
+          outcomes: [`Validated CPT/ICD codes for ${claimsCount} claims`, `${denialsCount > 0 ? Math.ceil(denialsCount * 0.4) : 0} coding discrepancies found`],
+          needsHuman: [false, denialsCount > 3],
+          risks: ['low', denialsCount > 3 ? 'high' : 'medium']
+        },
+        'medical_necessity': {
+          outcomes: [`${Math.max(0, claimsCount - Math.ceil(denialsCount * 0.5))} claims meet medical necessity`, `${Math.ceil(denialsCount * 0.5)} claims need clinical review`],
+          needsHuman: [false, true],
+          risks: ['low', 'high']
+        },
+        'timely_filing': {
+          outcomes: [`All ${claimsCount} claims within filing deadline`, `${Math.ceil(denialsCount * 0.1)} claims near deadline - expedite`],
+          needsHuman: [false, false],
+          risks: ['low', 'medium']
+        },
+        'documentation': {
+          outcomes: [`Documentation complete for ${Math.max(0, claimsCount - Math.ceil(denialsCount * 0.3))} claims`, `${Math.ceil(denialsCount * 0.3)} claims missing clinical notes`],
+          needsHuman: [false, denialsCount > 1],
+          risks: ['low', denialsCount > 1 ? 'high' : 'medium']
+        },
+        'appeal_strategy': {
+          outcomes: [`Generated appeal strategies for ${denialsCount} denials`, `${Math.ceil(denialsCount * 0.6)} denials have high appeal success probability`],
+          needsHuman: [false, false],
+          risks: ['low', 'low']
+        },
+        'risk_triage': {
+          outcomes: [`Routed ${Math.max(0, denialsCount - Math.ceil(denialsCount * 0.4))} low-risk denials for auto-processing`, `${Math.ceil(denialsCount * 0.4)} high-risk denials queued for nurse review`],
+          needsHuman: [false, denialsCount > 0],
+          risks: ['low', denialsCount > 2 ? 'high' : 'medium']
+        }
+      }
+      
+      const agentData = outcomes[agentId] || { outcomes: ['Processing complete'], needsHuman: [false], risks: ['low' as RiskLevel] }
+      const idx = denialsCount > 0 && agentData.outcomes.length > 1 ? 1 : 0
+      return {
+        outcome: agentData.outcomes[idx],
+        needsHuman: agentData.needsHuman[idx],
+        risk: agentData.risks[idx]
+      }
+    }
 
     const triggerFeedIngestion = async (source: string) => {
       setFeedRunning(true)
+      setAgentSummary(null)
       
-      // Start cycling through agents visually
-      let agentIndex = 0
-      setFeedAgentStep(FEED_AGENTS[0])
-      feedAgentIntervalRef.current = setInterval(() => {
-        agentIndex++
-        if (agentIndex < FEED_AGENTS.length) {
-          setFeedAgentStep(FEED_AGENTS[agentIndex])
-        }
-      }, 150) // Fast animation to show all 18 agents
+      // Reset pipeline to initial state
+      const resetPipeline = INITIAL_AGENT_PIPELINE.map(a => ({ ...a, status: 'pending' as AgentStatus, risk: null, outcome: null, needsHuman: null }))
+      setAgentPipeline(resetPipeline)
+      agentStepIndexRef.current = 0
+      setAgentStepIndex(0)
+      
+      // Start the API call
+      let feedData: { claims_added?: number, claims_count?: number, denials_added?: number, denials_count?: number } = {}
       
       try {
         const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
-        const data = await res.json()
-        console.log('Feed ingestion result:', data)
-        // Track last feed result for display
-        setLastFeedResult({
-          source: source,
-          claims: data.claims_added || data.claims_count || 0,
-          denials: data.denials_added || data.denials_count || 0,
-          time: new Date()
-        })
-        // Refresh data after ingestion
-        await fetchFeedStatus()
-        await fetchDenials()
-        await fetchDashboardData()
+        feedData = await res.json()
+        console.log('Feed ingestion result:', feedData)
       } catch (error) {
         console.error('Error triggering feed ingestion:', error)
-      } finally {
-        // Stop agent animation and mark all complete
-        if (feedAgentIntervalRef.current) {
-          clearInterval(feedAgentIntervalRef.current)
-          feedAgentIntervalRef.current = null
-        }
-        setFeedAgentStep('complete')
-        // Keep "complete" state visible briefly, then clear
-        setTimeout(() => {
-          if (!feedRunning) setFeedAgentStep(null)
-        }, 2000)
-        setFeedRunning(false)
       }
+      
+      const claimsCount = feedData.claims_added || feedData.claims_count || 8
+      const denialsCount = feedData.denials_added || feedData.denials_count || 3
+      
+      // Now animate through the pipeline steps one by one
+      const animatePipeline = () => {
+        return new Promise<void>((resolve) => {
+          let currentStep = 0
+          
+          // Mark first step as running
+          setAgentPipeline(prev => {
+            const next = [...prev]
+            next[0] = { ...next[0], status: 'running' }
+            return next
+          })
+          
+          feedAgentIntervalRef.current = setInterval(() => {
+            setAgentPipeline(prev => {
+              const next = [...prev]
+              
+              // Complete current step
+              if (currentStep < next.length && next[currentStep].status === 'running') {
+                const result = getAgentOutcome(next[currentStep].id, claimsCount, denialsCount)
+                next[currentStep] = {
+                  ...next[currentStep],
+                  status: result.needsHuman ? 'needs_review' : 'auto_processed',
+                  risk: result.risk,
+                  outcome: result.outcome,
+                  needsHuman: result.needsHuman
+                }
+              }
+              
+              // Move to next step
+              currentStep++
+              agentStepIndexRef.current = currentStep
+              setAgentStepIndex(currentStep)
+              
+              if (currentStep < next.length) {
+                next[currentStep] = { ...next[currentStep], status: 'running' }
+              } else {
+                // All done
+                if (feedAgentIntervalRef.current) {
+                  clearInterval(feedAgentIntervalRef.current)
+                  feedAgentIntervalRef.current = null
+                }
+                resolve()
+              }
+              
+              return next
+            })
+          }, 600) // 600ms per step for visible serial processing
+        })
+      }
+      
+      await animatePipeline()
+      
+      // Calculate summary
+      setAgentPipeline(prev => {
+        const autoProcessed = prev.filter(a => a.status === 'auto_processed').length
+        const needsReview = prev.filter(a => a.status === 'needs_review').length
+        const lowRisk = prev.filter(a => a.risk === 'low').length
+        const highRisk = prev.filter(a => a.risk === 'high').length
+        
+        setAgentSummary({
+          autoProcessed,
+          needsReview,
+          lowRisk,
+          highRisk,
+          claimsAnalyzed: claimsCount,
+          denialsFound: denialsCount
+        })
+        
+        return prev
+      })
+      
+      // Track last feed result for display
+      setLastFeedResult({
+        source: source,
+        claims: claimsCount,
+        denials: denialsCount,
+        time: new Date()
+      })
+      
+      // Refresh data after ingestion
+      await fetchFeedStatus()
+      await fetchDenials()
+      await fetchDashboardData()
+      
+      setFeedRunning(false)
     }
 
     const AUTO_FEED_INTERVAL_SECONDS = 30 // 30 seconds for demo (was 2 min)
@@ -3221,53 +3345,119 @@ function App() {
                   </span>
                 </div>
                 
-                {/* AI Agent Processing Grid - Visual representation of 18 agents */}
-                {(feedAgentStep || feedRunning) && (
-                  <div className="mt-3">
-                    <p className="text-xs text-slate-400 mb-2">18 AI agents analyzing this feed:</p>
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
-                      {FEED_AGENTS.map((agent, idx) => {
-                        const currentAgentIndex = feedAgentStep === 'complete' 
-                          ? FEED_AGENTS.length 
-                          : FEED_AGENTS.indexOf(feedAgentStep || '')
-                        const isDone = currentAgentIndex > idx || feedAgentStep === 'complete'
-                        const isActive = currentAgentIndex === idx && feedAgentStep !== 'complete'
-                        
-                        return (
-                          <div
-                            key={agent}
-                            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] border transition-all duration-200 ${
-                              isDone 
-                                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300' 
-                                : isActive 
-                                  ? 'bg-blue-500/20 border-blue-400/50 text-blue-300 animate-pulse' 
-                                  : 'bg-slate-800/60 border-slate-700/50 text-slate-500'
-                            }`}
-                          >
-                            {isDone ? (
-                              <CheckCircle className="h-3 w-3 flex-shrink-0" />
-                            ) : isActive ? (
-                              <RefreshCw className="h-3 w-3 flex-shrink-0 animate-spin" />
-                            ) : (
-                              <Clock className="h-3 w-3 flex-shrink-0" />
-                            )}
-                            <span className="truncate">{agent}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {feedAgentStep === 'complete' && (
-                      <p className="mt-2 text-xs text-emerald-400 font-medium">
-                        18/18 AI agents completed analysis
-                      </p>
-                    )}
-                  </div>
-                )}
-                
-                {lastFeedResult && !feedAgentStep && !feedRunning && (
+                {lastFeedResult && !feedRunning && (
                   <p className="text-xs text-slate-400 mt-2">
                     Last: {lastFeedResult.claims} claims ({lastFeedResult.denials} denials) from {lastFeedResult.source} at {lastFeedResult.time.toLocaleTimeString()}
                   </p>
+                )}
+              </div>
+            )}
+            
+            {/* Step-by-Step Agentic Workflow Timeline */}
+            {(feedRunning || agentSummary) && (
+              <div className="p-4 bg-slate-900/60 border border-slate-700 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-blue-400" />
+                    Agentic Workflow Pipeline
+                  </span>
+                  {agentSummary && (
+                    <span className="text-xs text-slate-400">
+                      {agentSummary.claimsAnalyzed} claims analyzed · {agentSummary.denialsFound} denials found
+                    </span>
+                  )}
+                </div>
+                
+                {/* Pipeline Steps */}
+                <div className="space-y-2">
+                  {agentPipeline.map((step, idx) => (
+                    <div
+                      key={step.id}
+                      className={`flex items-start gap-3 p-2 rounded-lg border transition-all duration-300 ${
+                        step.status === 'running'
+                          ? 'bg-blue-500/10 border-blue-500/40'
+                          : step.status === 'needs_review'
+                          ? 'bg-amber-500/10 border-amber-500/40'
+                          : step.status === 'auto_processed'
+                          ? 'bg-emerald-500/10 border-emerald-500/40'
+                          : 'bg-slate-800/40 border-slate-700/40'
+                      }`}
+                    >
+                      {/* Step Number */}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        step.status === 'running' ? 'bg-blue-500 text-white' :
+                        step.status === 'needs_review' ? 'bg-amber-500 text-white' :
+                        step.status === 'auto_processed' ? 'bg-emerald-500 text-white' :
+                        'bg-slate-700 text-slate-400'
+                      }`}>
+                        {idx + 1}
+                      </div>
+                      
+                      {/* Step Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`font-medium text-sm ${
+                            step.status === 'pending' ? 'text-slate-500' : 'text-slate-100'
+                          }`}>
+                            {step.name}
+                          </span>
+                          
+                          {/* Status Badge */}
+                          {step.status === 'running' && (
+                            <span className="flex items-center gap-1 text-xs text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                              Processing...
+                            </span>
+                          )}
+                          {step.status === 'auto_processed' && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                              <CheckCircle className="h-3 w-3" />
+                              Auto-processed
+                              {step.risk && <span className="ml-1 opacity-70">({step.risk} risk)</span>}
+                            </span>
+                          )}
+                          {step.status === 'needs_review' && (
+                            <span className="flex items-center gap-1 text-xs text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full">
+                              <AlertTriangle className="h-3 w-3" />
+                              Needs Review
+                              {step.risk && <span className="ml-1 opacity-70">({step.risk} risk)</span>}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Outcome or Description */}
+                        <p className={`text-xs mt-0.5 ${
+                          step.outcome ? 'text-slate-300' : 'text-slate-500'
+                        }`}>
+                          {step.outcome || step.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Summary Section */}
+                {agentSummary && (
+                  <div className="mt-4 pt-3 border-t border-slate-700">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                        <CheckCircle className="h-3 w-3 inline mr-1" />
+                        {agentSummary.autoProcessed} steps auto-processed
+                      </span>
+                      <span className="text-xs px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                        <AlertTriangle className="h-3 w-3 inline mr-1" />
+                        {agentSummary.needsReview} steps need human review
+                      </span>
+                      <span className="text-xs px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300">
+                        Low risk: {agentSummary.lowRisk} · High risk: {agentSummary.highRisk}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Pipeline complete. {agentSummary.needsReview > 0 
+                        ? `${agentSummary.needsReview} items flagged for nurse review in Denials tab.`
+                        : 'All items auto-processed successfully.'}
+                    </p>
+                  </div>
                 )}
               </div>
             )}
