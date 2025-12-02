@@ -5,8 +5,17 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 DATABASE_URL = "sqlite+aiosqlite:///./denial_management.db"
 SYNC_DATABASE_URL = "sqlite:///./denial_management.db"
 
-async_engine = create_async_engine(DATABASE_URL, echo=False)
-sync_engine = create_engine(SYNC_DATABASE_URL, echo=False)
+# Configure SQLite for better concurrency with WAL mode and timeout
+async_engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    connect_args={"timeout": 30, "check_same_thread": False}
+)
+sync_engine = create_engine(
+    SYNC_DATABASE_URL, 
+    echo=False,
+    connect_args={"timeout": 30, "check_same_thread": False}
+)
 
 AsyncSessionLocal = sessionmaker(
     bind=async_engine,

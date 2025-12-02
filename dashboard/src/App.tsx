@@ -62,6 +62,8 @@ interface DashboardMetrics {
   high_priority_denials: number
   pa_pending: number
   pa_approval_rate: number
+  avg_queue_wait_time_seconds?: number
+  avg_queue_wait_time_display?: string
 }
 
 interface Denial {
@@ -90,6 +92,8 @@ interface Denial {
   procedure_description: string
   denial_reason_description: string
   denial_category: string
+  queue_wait_time_seconds?: number
+  queue_wait_time_display?: string
 }
 
 interface PriorAuth {
@@ -492,9 +496,20 @@ function App() {
       }
     }
 
+    const [isLiveAI, setIsLiveAI] = useState(false)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [aiModelsUsed, _setAiModelsUsed] = useState<string[]>([])
+    
     const triggerFeedIngestion = async (source: string) => {
       setFeedRunning(true)
       setAgentSummary(null)
+      setIsLiveAI(false)
+      
+      // Clear any previous animation interval
+      if (feedAgentIntervalRef.current) {
+        clearInterval(feedAgentIntervalRef.current)
+        feedAgentIntervalRef.current = null
+      }
       
       // Reset pipeline to initial state
       const resetPipeline = INITIAL_AGENT_PIPELINE.map(a => ({ ...a, status: 'pending' as AgentStatus, risk: null, outcome: null, needsHuman: null }))
@@ -502,26 +517,32 @@ function App() {
       agentStepIndexRef.current = 0
       setAgentStepIndex(0)
       
-      // Start the API call
-      let feedData: { claims_added?: number, claims_count?: number, denials_added?: number, denials_count?: number } = {}
+      // Use refs to store feed data so animation can access it
+      const feedDataRef = { current: { claimsCount: 8, denialsCount: 3 } }
       
-      try {
-        const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
-        feedData = await res.json()
-        console.log('Feed ingestion result:', feedData)
-      } catch (error) {
-        console.error('Error triggering feed ingestion:', error)
-      }
+      // Start the API call in the background (non-blocking)
+      const ingestPromise = (async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
+          const data = await res.json()
+          console.log('Feed ingestion result:', data)
+          feedDataRef.current = {
+            claimsCount: data.claims_added || data.claims_count || 8,
+            denialsCount: data.denials_added || data.denials_count || 3
+          }
+          return data
+        } catch (error) {
+          console.error('Error triggering feed ingestion:', error)
+          return {}
+        }
+      })()
       
-      const claimsCount = feedData.claims_added || feedData.claims_count || 8
-      const denialsCount = feedData.denials_added || feedData.denials_count || 3
-      
-      // Now animate through the pipeline steps one by one
+      // Start the animation IMMEDIATELY (runs in parallel with API call)
       const animatePipeline = () => {
         return new Promise<void>((resolve) => {
           let currentStep = 0
           
-          // Mark first step as running
+          // Mark first step as running immediately
           setAgentPipeline(prev => {
             const next = [...prev]
             next[0] = { ...next[0], status: 'running' }
@@ -531,6 +552,7 @@ function App() {
           feedAgentIntervalRef.current = setInterval(() => {
             setAgentPipeline(prev => {
               const next = [...prev]
+              const { claimsCount, denialsCount } = feedDataRef.current
               
               // Complete current step
               if (currentStep < next.length && next[currentStep].status === 'running') {
@@ -552,7 +574,7 @@ function App() {
               if (currentStep < next.length) {
                 next[currentStep] = { ...next[currentStep], status: 'running' }
               } else {
-                // All done
+                // Animation complete
                 if (feedAgentIntervalRef.current) {
                   clearInterval(feedAgentIntervalRef.current)
                   feedAgentIntervalRef.current = null
@@ -562,13 +584,17 @@ function App() {
               
               return next
             })
-          }, 600) // 600ms per step for visible serial processing
+          }, 600)
         })
       }
       
-      await animatePipeline()
+      // Run animation and API call in parallel
+      await Promise.all([ingestPromise, animatePipeline()])
       
-      // Calculate summary
+      // Now both are complete - update summary with actual data
+      const claimsCount = feedDataRef.current.claimsCount
+      const denialsCount = feedDataRef.current.denialsCount
+      
       setAgentPipeline(prev => {
         const autoProcessed = prev.filter(a => a.status === 'auto_processed').length
         const needsReview = prev.filter(a => a.status === 'needs_review').length
@@ -595,7 +621,7 @@ function App() {
         time: new Date()
       })
       
-      // Refresh data after ingestion
+      // Refresh data after both animation and ingestion complete
       await fetchFeedStatus()
       await fetchDenials()
       await fetchDashboardData()
@@ -1140,12 +1166,18 @@ function App() {
                   <div className="vision-stat-card">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-slate-400 uppercase tracking-wide">CARC/RARC Analysis</p>
-                        <div className="text-2xl font-bold text-emerald-400 mt-1">{metrics?.avg_appeal_success_rate}%</div>
-                        <p className="text-xs text-slate-400 mt-1">Appeal success rate</p>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Avg Queue Wait</p>
+                        <div className={`text-2xl font-bold mt-1 ${
+                          (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'text-red-400' : 
+                          (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>{metrics?.avg_queue_wait_time_display || '0m'}</div>
+                        <p className="text-xs text-slate-400 mt-1">Time in queue</p>
                       </div>
-                      <div className="vision-icon-box vision-gradient-green">
-                        <Activity className="h-5 w-5 text-white" />
+                      <div className={`vision-icon-box ${
+                        (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'vision-gradient-red' : 
+                        (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'vision-gradient-orange' : 'vision-gradient-green'
+                      }`}>
+                        <Clock className="h-5 w-5 text-white" />
                       </div>
                     </div>
                   </div>
@@ -1692,6 +1724,7 @@ function App() {
                           <TableHead>Category</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Queue Time</TableHead>
                         </>
                       )}
                     </TableRow>
@@ -1771,6 +1804,14 @@ function App() {
                               <Badge className={getStatusColor(denial.denial_status)}>
                                 {denial.denial_status}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`text-sm font-medium ${
+                                (denial.queue_wait_time_seconds || 0) > 86400 ? 'text-red-400' : 
+                                (denial.queue_wait_time_seconds || 0) > 3600 ? 'text-amber-400' : 'text-slate-400'
+                              }`}>
+                                {denial.queue_wait_time_display || '-'}
+                              </span>
                             </TableCell>
                           </>
                         )}
@@ -3360,12 +3401,24 @@ function App() {
                   <span className="text-sm font-medium text-slate-200 flex items-center gap-2">
                     <Brain className="h-4 w-4 text-blue-400" />
                     Agentic Workflow Pipeline
+                    {isLiveAI && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/50 text-green-300 font-normal">
+                        Live AI (Azure)
+                      </span>
+                    )}
                   </span>
-                  {agentSummary && (
-                    <span className="text-xs text-slate-400">
-                      {agentSummary.claimsAnalyzed} claims analyzed · {agentSummary.denialsFound} denials found
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isLiveAI && aiModelsUsed.length > 0 && (
+                      <span className="text-xs text-slate-500">
+                        Models: {aiModelsUsed.slice(0, 3).join(', ')}{aiModelsUsed.length > 3 ? '...' : ''}
+                      </span>
+                    )}
+                    {agentSummary && (
+                      <span className="text-xs text-slate-400">
+                        {agentSummary.claimsAnalyzed} claims · {agentSummary.denialsFound} denials
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Pipeline Steps */}
