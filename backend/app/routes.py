@@ -1614,14 +1614,24 @@ async def get_feed_status(db: AsyncSession = Depends(get_db)):
     last_feed_result = await db.execute(last_feed_query)
     last_feed = last_feed_result.fetchone()
     
+    # Handle last_feed_time - SQLite returns string, not datetime
+    last_feed_time = None
+    if last_feed and last_feed[1]:
+        if isinstance(last_feed[1], str):
+            last_feed_time = last_feed[1]  # Already a string
+        else:
+            last_feed_time = last_feed[1].isoformat()
+    
     return {
         "is_auto_running": auto_feed_running,
         "claims_today": stats[0] if stats else 0,
         "denials_today": stats[1] if stats else 0,
         "total_feeds_today": stats[2] if stats else 0,
-        "last_feed_time": last_feed[1].isoformat() if last_feed and last_feed[1] else None,
+        "last_feed_time": last_feed_time,
         "last_feed_source": last_feed[0] if last_feed else None,
-        "last_feed_status": last_feed[2] if last_feed else None
+        "last_feed_status": last_feed[2] if last_feed else None,
+        "last_feed_claims": last_feed[3] if last_feed else 0,
+        "last_feed_denials": last_feed[4] if last_feed else 0
     }
 
 

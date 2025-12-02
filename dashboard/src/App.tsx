@@ -245,6 +245,9 @@ function App() {
     const [lastFeedResult, setLastFeedResult] = useState<{source: string, claims: number, denials: number, time: Date} | null>(null)
     const autoFeedIntervalRef = useRef<NodeJS.Timeout | null>(null)
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    // AI agent processing animation during feed ingestion
+    const [feedAgentStep, setFeedAgentStep] = useState<string | null>(null)
+    const feedAgentIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -409,8 +412,27 @@ function App() {
       }
     }
 
+    // AI agent steps to show during feed ingestion
+    const FEED_AGENT_STEPS = [
+      "Validating claim format and structure...",
+      "Checking patient eligibility and coverage...",
+      "Analyzing CARC/RARC denial codes...",
+      "Calculating appeal probability scores...",
+      "Prioritizing by recovery potential...",
+      "Generating AI recommendations..."
+    ]
+
     const triggerFeedIngestion = async (source: string) => {
       setFeedRunning(true)
+      
+      // Start cycling through agent steps
+      let stepIndex = 0
+      setFeedAgentStep(FEED_AGENT_STEPS[0])
+      feedAgentIntervalRef.current = setInterval(() => {
+        stepIndex = (stepIndex + 1) % FEED_AGENT_STEPS.length
+        setFeedAgentStep(FEED_AGENT_STEPS[stepIndex])
+      }, 400)
+      
       try {
         const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
         const data = await res.json()
@@ -429,6 +451,12 @@ function App() {
       } catch (error) {
         console.error('Error triggering feed ingestion:', error)
       } finally {
+        // Stop agent animation
+        if (feedAgentIntervalRef.current) {
+          clearInterval(feedAgentIntervalRef.current)
+          feedAgentIntervalRef.current = null
+        }
+        setFeedAgentStep(null)
         setFeedRunning(false)
       }
     }
@@ -488,6 +516,7 @@ function App() {
       return () => {
         if (autoFeedIntervalRef.current) clearInterval(autoFeedIntervalRef.current)
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+        if (feedAgentIntervalRef.current) clearInterval(feedAgentIntervalRef.current)
       }
     }, [])
 
@@ -3173,7 +3202,14 @@ function App() {
                     Next feed in: <span className="font-mono text-emerald-400">{autoFeedCountdown}s</span>
                   </span>
                 </div>
-                {lastFeedResult && (
+                {/* AI Agent Processing Animation */}
+                {feedAgentStep && (
+                  <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded flex items-center gap-2">
+                    <RefreshCw className="h-3 w-3 text-blue-400 animate-spin" />
+                    <span className="text-blue-300 text-sm font-medium">{feedAgentStep}</span>
+                  </div>
+                )}
+                {lastFeedResult && !feedAgentStep && (
                   <p className="text-xs text-slate-400 mt-2">
                     Last: {lastFeedResult.claims} claims ({lastFeedResult.denials} denials) from {lastFeedResult.source} at {lastFeedResult.time.toLocaleTimeString()}
                   </p>
@@ -3185,7 +3221,7 @@ function App() {
             {feedStatus && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="p-2 bg-slate-800/50 rounded text-center">
-                  <div className="text-xl font-bold text-blue-400">{feedStatus.feeds_today || 0}</div>
+                  <div className="text-xl font-bold text-blue-400">{feedStatus.total_feeds_today || feedStatus.feeds_today || 0}</div>
                   <div className="text-xs text-slate-400">Feeds Today</div>
                 </div>
                 <div className="p-2 bg-slate-800/50 rounded text-center">
