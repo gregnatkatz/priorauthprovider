@@ -3091,6 +3091,51 @@ function App() {
 
   const renderAI = () => (
     <div className="space-y-6">
+      {/* Demo Guide Card - Step by Step Instructions */}
+      <Card className="bg-gradient-to-r from-blue-600/40 to-purple-600/40 border-blue-400/50 border-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Target className="h-5 w-5 text-blue-300" />
+            How to Run the Demo
+          </CardTitle>
+          <CardDescription className="text-slate-300">
+            Follow these 4 steps to see the full denial management workflow
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-3 bg-slate-800/60 rounded-lg border border-blue-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold">1</div>
+                <span className="font-medium text-blue-300">Ingest Claims</span>
+              </div>
+              <p className="text-xs text-slate-400">Click "Availity Feed" or "Change Healthcare" below to simulate receiving 835 remittance data</p>
+            </div>
+            <div className="p-3 bg-slate-800/60 rounded-lg border border-emerald-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold">2</div>
+                <span className="font-medium text-emerald-300">Review Denials</span>
+              </div>
+              <p className="text-xs text-slate-400">Go to "Denials" tab, click any row to see AI recommendations and take action</p>
+            </div>
+            <div className="p-3 bg-slate-800/60 rounded-lg border border-purple-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-sm font-bold">3</div>
+                <span className="font-medium text-purple-300">Follow AI or Customize</span>
+              </div>
+              <p className="text-xs text-slate-400">Choose "Follow AI Plan" to accept AI recommendation, or "Custom Plan" to override</p>
+            </div>
+            <div className="p-3 bg-slate-800/60 rounded-lg border border-amber-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-sm font-bold">4</div>
+                <span className="font-medium text-amber-300">See Impact</span>
+              </div>
+              <p className="text-xs text-slate-400">Watch AI Adherence and Recovery metrics update as you work through denials</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Validation Summary Card */}
       <Card className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-500/30">
         <CardHeader>
@@ -3259,7 +3304,10 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className="text-center text-slate-400 py-4">No staff actions recorded yet</div>
+              <div className="text-center py-4">
+                <p className="text-slate-400 mb-2">No staff actions recorded yet</p>
+                <p className="text-xs text-slate-500">Go to Denials tab and click "Follow AI Plan" or "Custom Plan" on any denial</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -3308,7 +3356,10 @@ function App() {
                 )}
               </div>
             ) : (
-              <div className="text-center text-slate-400 py-4">No appeals decided yet</div>
+              <div className="text-center py-4">
+                <p className="text-slate-400 mb-2">No appeals decided yet</p>
+                <p className="text-xs text-slate-500">Click "Simulate Appeal Responses" below to generate payer decisions</p>
+              </div>
             )}
           </CardContent>
         </Card>

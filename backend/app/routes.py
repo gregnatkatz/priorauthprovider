@@ -1753,11 +1753,11 @@ async def get_ai_adherence(db: AsyncSession = Depends(get_db)):
     return {
         "total_actions": total,
         "follow_ai_count": follow_ai,
-        "follow_ai_rate": round(follow_ai / total * 100, 1) if total > 0 else 67.5,  # Default to target
+        "follow_ai_rate": follow_ai / total if total > 0 else 0,  # Return as decimal (0-1), 0 when no actions
         "custom_plan_count": stats[2] if stats[2] else 0,
         "escalate_count": stats[3] if stats[3] else 0,
         "dismiss_count": stats[4] if stats[4] else 0,
-        "target_rate": 67.5
+        "target_rate": 0.675  # Target as decimal
     }
 
 
