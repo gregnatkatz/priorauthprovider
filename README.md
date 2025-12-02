@@ -21,7 +21,6 @@ The platform provides role-optimized views for different user types:
 - **Avg Time to Treat**: Shows average time to get patients treated (2.3 days, -1.5 days with AI)
 - **Quality Score**: Patient care quality metrics (94.2%, +3.1% this month)
 - Focus on patient outcomes, clinical urgency, and treatment readiness
-- Prior Auth tab shows "Can I Treat?" column with YES/NO/PENDING status
 
 **Executive View:**
 - **At Risk Amount**: Financial exposure from pending denials ($234,900.23)
@@ -52,7 +51,7 @@ Simulate new claims being ingested and validated through all 18 AI agents with a
 
 ### Re-Evaluation Feature
 
-A "Re-run AI Validation" button allows clinicians to re-evaluate existing denials or prior authorizations when:
+A "Re-run AI Validation" button allows clinicians to re-evaluate existing denials when:
 - Documentation has been updated
 - Policy changes have occurred
 - Time has passed and fresh analysis is needed
@@ -69,7 +68,7 @@ This creates an "Action Needed" badge indicating re-evaluation is recommended.
 
 ### Actionable Detail Drawers
 
-Click any denial or prior auth row to open a detail drawer with:
+Click any denial row to open a detail drawer with:
 
 **For Denials:**
 - AI recommended next action with confidence percentage
@@ -82,14 +81,6 @@ Click any denial or prior auth row to open a detail drawer with:
 - Activity timeline with appeal deadline
 - **AI Appeal Letter Generator** - One-click professional appeal letter generation
 
-**For Prior Authorizations:**
-- Denial risk percentage and documentation score
-- Procedure details (code, description, request date)
-- AI recommendations with pre-submission checklist
-- Risk assessment and payer requirements
-- Action buttons (Submit PA, Add Clinical Docs, Escalate/Peer Review)
-- Timeline with expected decision timeframe
-- **"Can I Treat?" Treatment Guidance** - Clear YES/NO/PENDING status with documentation checklist
 
 ### 18 AI Agents (12 Specialist + 6 Validation)
 
@@ -105,7 +96,7 @@ The platform uses 18 AI agents with diversified Azure OpenAI models for comprehe
 | Care Gap Detector | gpt-4.1 | Identifies gaps in patient care |
 | Clinical Urgency | gpt-4.1 | Scores time-sensitivity of cases |
 | Financial Value | gpt-4.1-mini | Calculates financial impact |
-| PA Risk Predictor | gpt-4.1-mini | Predicts prior auth denial risk |
+| Denial Risk Predictor | gpt-4.1-mini | Predicts denial risk factors |
 | Doc Completeness | gpt-4.1-mini | Checks documentation completeness |
 | Queue Wait Time | gpt-4.1-nano | Estimates processing time |
 | Policy Monitor | gpt-4.1-nano | Monitors payer policy changes |
@@ -207,7 +198,6 @@ dashboard/
 **Fact Tables:**
 - fact_claim (1,000 claims)
 - fact_denial (288 denials with AI enrichment)
-- fact_prior_auth (200 prior authorizations)
 - fact_appeal (appeals tracking)
 - fact_rl_trace (500 RL traces for AI impact)
 - fact_treatment_guidance_result (AI-generated treatment guidance results)
@@ -222,10 +212,6 @@ dashboard/
 ### Denials
 - `GET /api/denials` - List denials with pagination/filtering
 - `POST /api/ai/analyze-denial/{id}` - AI analysis for a denial (all 18 agents)
-
-### Prior Auth
-- `GET /api/prior-auths` - List prior authorizations
-- `POST /api/ai/analyze-prior-auth/{id}` - AI analysis for a prior auth (all 18 agents)
 
 ### Analytics
 - `GET /api/analytics/resolution-trends` - Time-to-resolution trends
@@ -299,7 +285,7 @@ Denials list with Clinical Urgency and SDOH Risk columns. Includes working statu
 ![Denials Clinical](screenshots/04_denials_clinical.png)
 
 ### AI Agents Tab (18 Agents)
-Shows all 18 AI agents: 12 Core Agents + 6 Validation Agents using 7 different LLMs. Includes the "Test Ingest" button for simulating new prior auth cases.
+Shows all 18 AI agents: 12 Core Agents + 6 Validation Agents using 7 different LLMs. Includes the "Test Ingest" button for simulating new denial cases.
 ![AI Agents](screenshots/05_ai_agents.png)
 
 ### Denials Workflow Drawer
@@ -311,7 +297,7 @@ Shows validation grades (Policy Match, Viability, Safety Status) after running a
 ![Denials AI Analysis](screenshots/07_denials_ai_analysis.png)
 
 ### Test Ingest Feature
-Simulates 10 new prior auth cases being processed through all 18 AI agents. Shows AI-resolved queue with one-click approval for low-risk cases.
+Simulates 10 new denial cases being processed through all 18 AI agents. Shows AI-resolved queue with one-click approval for low-risk cases.
 ![Test Ingest](screenshots/09_test_ingest.png)
 
 ### Re-Evaluation Progress
