@@ -179,6 +179,10 @@ class DenialResponse(BaseModel):
     denial_category: Optional[str] = None
     recommended_physician_name: Optional[str] = None
     
+    # Queue wait time (time since denial was created)
+    queue_wait_time_seconds: Optional[int] = None  # Time in seconds since denial was created
+    queue_wait_time_display: Optional[str] = None  # Human-readable format (e.g., "2h 15m", "1d 4h")
+    
     class Config:
         from_attributes = True
 
@@ -291,6 +295,9 @@ class DashboardMetrics(BaseModel):
     high_priority_denials: int
     pa_pending: int
     pa_approval_rate: float
+    # Queue wait time KPI
+    avg_queue_wait_time_seconds: Optional[int] = None
+    avg_queue_wait_time_display: Optional[str] = None
 
 
 class DenialByCategory(BaseModel):

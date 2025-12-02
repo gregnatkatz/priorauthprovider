@@ -220,7 +220,8 @@ def generate_claims(
                 priority_score=round(random.uniform(50, 95), 1),
                 root_cause_category=carc['category'],
                 ai_risk_level=random.choice(['LOW', 'MEDIUM', 'HIGH']),
-                needs_reeval=False
+                needs_reeval=False,
+                created_at=datetime.utcnow()  # Set created_at for queue wait time tracking
             )
             
             db.add(denial)

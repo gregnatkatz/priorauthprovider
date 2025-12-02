@@ -5,7 +5,7 @@ Supports switching between Synthetic (SQLite) and Fabric HDS data sources
 
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import select, func, and_, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -74,11 +74,37 @@ class DataService(ABC):
         pass
 
 
+def format_queue_wait_time(seconds: int) -> str:
+    """Format queue wait time in human-readable format (e.g., '2h 15m', '1d 4h')"""
+    if seconds < 60:
+        return f"{seconds}s"
+    elif seconds < 3600:
+        minutes = seconds // 60
+        return f"{minutes}m"
+    elif seconds < 86400:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f"{hours}h {minutes}m" if minutes > 0 else f"{hours}h"
+    else:
+        days = seconds // 86400
+        hours = (seconds % 86400) // 3600
+        return f"{days}d {hours}h" if hours > 0 else f"{days}d"
+
+
 class SQLiteDataService(DataService):
     """SQLite implementation of the data service for synthetic data"""
     
     def __init__(self, session: AsyncSession):
         self.session = session
+    
+    def _calc_queue_wait_seconds(self, created_at, denial_date) -> Optional[int]:
+        """Calculate queue wait time in seconds, using created_at if available, otherwise denial_date"""
+        base_time = created_at or denial_date
+        if not base_time:
+            return None
+        if isinstance(base_time, date) and not isinstance(base_time, datetime):
+            base_time = datetime.combine(base_time, datetime.min.time())
+        return int((datetime.utcnow() - base_time).total_seconds())
     
     async def get_denials(
         self,
@@ -206,7 +232,10 @@ class SQLiteDataService(DataService):
                 "procedure_description": row.procedure_description,
                 "denial_reason_description": row.carc_description,
                 "denial_category": row.denial_category,
-                "recommended_physician_name": f"{row.physician_first_name} {row.physician_last_name}" if row.physician_first_name else None
+                "recommended_physician_name": f"{row.physician_first_name} {row.physician_last_name}" if row.physician_first_name else None,
+                # Queue wait time calculation (use created_at if available, otherwise fall back to denial_date)
+                "queue_wait_time_seconds": self._calc_queue_wait_seconds(denial.created_at, denial.denial_date),
+                "queue_wait_time_display": format_queue_wait_time(self._calc_queue_wait_seconds(denial.created_at, denial.denial_date)) if self._calc_queue_wait_seconds(denial.created_at, denial.denial_date) else None
             }
             denials.append(DenialResponse(**denial_dict))
         
@@ -538,6 +567,28 @@ class SQLiteDataService(DataService):
         decided_pa = pa_row[1] or 0
         pa_approval_rate = (approved_pa / decided_pa * 100) if decided_pa > 0 else 0
         
+        # Average queue wait time for pending denials (use created_at if available, otherwise fall back to denial_date)
+        pending_denials_query = select(FactDenial.created_at, FactDenial.denial_date).where(
+            FactDenial.denial_status.in_(["New", "In Review", "Pending"])
+        )
+        pending_result = await self.session.execute(pending_denials_query)
+        pending_rows = pending_result.all()
+        
+        avg_queue_wait_seconds = None
+        avg_queue_wait_display = None
+        if pending_rows:
+            now = datetime.utcnow()
+            wait_times = []
+            for created_at, denial_date in pending_rows:
+                base_time = created_at or denial_date
+                if base_time:
+                    if isinstance(base_time, date) and not isinstance(base_time, datetime):
+                        base_time = datetime.combine(base_time, datetime.min.time())
+                    wait_times.append((now - base_time).total_seconds())
+            if wait_times:
+                avg_queue_wait_seconds = int(sum(wait_times) / len(wait_times))
+                avg_queue_wait_display = format_queue_wait_time(avg_queue_wait_seconds)
+        
         return DashboardMetrics(
             total_claims=total_claims,
             total_denials=total_denials,
@@ -549,7 +600,9 @@ class SQLiteDataService(DataService):
             avg_appeal_success_rate=round(avg_appeal_success, 1),
             high_priority_denials=high_priority_denials,
             pa_pending=pa_pending,
-            pa_approval_rate=round(pa_approval_rate, 1)
+            pa_approval_rate=round(pa_approval_rate, 1),
+            avg_queue_wait_time_seconds=avg_queue_wait_seconds,
+            avg_queue_wait_time_display=avg_queue_wait_display
         )
     
     async def get_denials_by_category(self) -> List[DenialByCategory]:

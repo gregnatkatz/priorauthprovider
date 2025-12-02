@@ -495,6 +495,11 @@ def seed_database():
                 0.30 * min(financial_value, 1.0)
             )
             
+            # Generate random created_at timestamp (between 1 minute and 3 days ago)
+            # This simulates denials that have been waiting in queue for different amounts of time
+            queue_wait_seconds = random.randint(60, 259200)  # 1 min to 3 days
+            denial_created_at = datetime.utcnow() - timedelta(seconds=queue_wait_seconds)
+            
             denial = FactDenial(
                 claim_id=claim.claim_id,
                 denial_reason_id=denial_reason.denial_reason_id,
@@ -520,6 +525,7 @@ def seed_database():
                 root_cause_category=scenario.replace("_", " ").title(),
                 prevention_recommendation=f"Implement {scenario.replace('_', ' ')} prevention protocol",
                 priority_score=round(priority_score, 3),
+                created_at=denial_created_at,
             )
             session.add(denial)
             denials.append(denial)
