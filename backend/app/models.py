@@ -691,3 +691,198 @@ class FactTreatmentGuidanceResult(Base):
     # Relationships
     prior_auth = relationship("FactPriorAuth")
     guideline = relationship("DimTreatmentGuideline")
+
+
+# ==================== CFO CHURN PREDICTION TABLES ====================
+
+class ChurnPrediction(Base):
+    """AI prediction made at 837 submission for churn forecasting"""
+    __tablename__ = "fact_churn_prediction"
+    
+    prediction_id = Column(Integer, primary_key=True, autoincrement=True)
+    claim_id = Column(Integer, ForeignKey("fact_claim.claim_id"))
+    batch_id = Column(String(100))
+    predicted_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Amounts
+    billed_amount = Column(Float)
+    predicted_paid = Column(Float)
+    predicted_churn_rate = Column(Float)  # 0-1
+    confidence_score = Column(Float)  # 0-1
+    
+    # Breakdown
+    predicted_contractual = Column(Float)
+    predicted_denial = Column(Float)
+    predicted_patient_resp = Column(Float)
+    
+    # Risk analysis
+    risk_factors = Column(Text)  # JSON
+    preventive_actions = Column(Text)  # JSON
+    risk_score = Column(Float)  # 0-1
+    risk_level = Column(String(20))  # LOW, MEDIUM, HIGH
+    
+    # Collection timeline
+    expected_days_to_payment = Column(Integer)
+    expected_payment_date = Column(Date)
+    
+    model_version = Column(String(50))
+    
+    # Relationships
+    claim = relationship("FactClaim")
+
+
+class Submission837(Base):
+    """837 claim submission tracking"""
+    __tablename__ = "fact_837_submission"
+    
+    submission_id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(String(100), ForeignKey("ingestion_batch.batch_id"))
+    claim_id = Column(Integer, ForeignKey("fact_claim.claim_id"))
+    
+    transaction_type = Column(String(10))  # '837P', '837I'
+    submitter_id = Column(String(50))
+    receiver_id = Column(String(50))
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    
+    edi_segments = Column(Text)  # Key segments as JSON
+    prediction_id = Column(Integer, ForeignKey("fact_churn_prediction.prediction_id"))
+    
+    # Relationships
+    claim = relationship("FactClaim")
+    prediction = relationship("ChurnPrediction")
+
+
+class Response835(Base):
+    """835 remittance response tracking"""
+    __tablename__ = "fact_835_response"
+    
+    response_id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(String(100), ForeignKey("ingestion_batch.batch_id"))
+    claim_id = Column(Integer, ForeignKey("fact_claim.claim_id"))
+    submission_id = Column(Integer, ForeignKey("fact_837_submission.submission_id"))
+    
+    payer_claim_number = Column(String(50))
+    check_number = Column(String(50))
+    payment_method = Column(String(20))
+    payment_date = Column(Date)
+    received_at = Column(DateTime, default=datetime.utcnow)
+    
+    billed_amount = Column(Float)
+    paid_amount = Column(Float)
+    patient_responsibility = Column(Float)
+    
+    claim_status_code = Column(String(5))  # 1=Processed, 2=Denied, etc.
+    
+    total_contractual = Column(Float)
+    total_denials = Column(Float)
+    
+    edi_segments = Column(Text)
+    
+    # Relationships
+    claim = relationship("FactClaim")
+    submission = relationship("Submission837")
+
+
+class Adjustment835(Base):
+    """Individual adjustments from 835"""
+    __tablename__ = "fact_835_adjustment"
+    
+    adjustment_id = Column(Integer, primary_key=True, autoincrement=True)
+    response_id = Column(Integer, ForeignKey("fact_835_response.response_id"))
+    claim_id = Column(Integer, ForeignKey("fact_claim.claim_id"))
+    
+    group_code = Column(String(5))  # CO, PR, OA, PI, CR
+    reason_code = Column(String(10))  # CARC
+    remark_codes = Column(Text)  # RARC JSON array
+    
+    adjustment_amount = Column(Float)
+    quantity = Column(Integer)
+    
+    adjustment_category = Column(String(50))  # 'contractual', 'denial', 'patient'
+    
+    # Relationships
+    response = relationship("Response835")
+    claim = relationship("FactClaim")
+
+
+class ChurnReconciliation(Base):
+    """Prediction vs Actual reconciliation"""
+    __tablename__ = "fact_churn_reconciliation"
+    
+    reconciliation_id = Column(Integer, primary_key=True, autoincrement=True)
+    claim_id = Column(Integer, ForeignKey("fact_claim.claim_id"))
+    prediction_id = Column(Integer, ForeignKey("fact_churn_prediction.prediction_id"))
+    response_id = Column(Integer, ForeignKey("fact_835_response.response_id"))
+    
+    predicted_paid = Column(Float)
+    actual_paid = Column(Float)
+    variance_amount = Column(Float)
+    variance_pct = Column(Float)
+    
+    contractual_variance = Column(Float)
+    denial_variance = Column(Float)
+    patient_resp_variance = Column(Float)
+    
+    variance_root_cause = Column(Text)  # JSON from AI
+    forecast_accuracy_score = Column(Float)
+    
+    reconciled_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    claim = relationship("FactClaim")
+    prediction = relationship("ChurnPrediction")
+    response = relationship("Response835")
+
+
+class BudgetForecast(Base):
+    """Aggregated budget forecasts for CFO dashboard"""
+    __tablename__ = "fact_budget_forecast"
+    
+    forecast_id = Column(Integer, primary_key=True, autoincrement=True)
+    forecast_date = Column(Date)
+    period_type = Column(String(20))  # 'daily', 'weekly', 'monthly'
+    period_start = Column(Date)
+    period_end = Column(Date)
+    
+    submitted_amount = Column(Float)
+    predicted_collection = Column(Float)
+    predicted_churn_rate = Column(Float)
+    confidence_low = Column(Float)
+    confidence_high = Column(Float)
+    
+    actual_collection = Column(Float)
+    actual_variance = Column(Float)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class IngestionBatch(Base):
+    """Track ingestion batches for 837/835 files"""
+    __tablename__ = "ingestion_batch"
+    
+    batch_id = Column(String(100), primary_key=True)
+    source = Column(String(50))  # 'availity', 'change_healthcare', 'waystar'
+    file_name = Column(String(200))
+    file_type = Column(String(10))  # '835', '837P', '837I'
+    file_size_bytes = Column(Integer)
+    received_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime)
+    status = Column(String(20))  # 'processing', 'complete', 'error'
+    total_records = Column(Integer)
+    processed_records = Column(Integer)
+    error_records = Column(Integer)
+    denials_detected = Column(Integer)
+    processing_time_ms = Column(Integer)
+
+
+class IngestionSource(Base):
+    """Clearinghouse connection config"""
+    __tablename__ = "ingestion_source"
+    
+    source_id = Column(String(50), primary_key=True)
+    source_name = Column(String(100))
+    connection_type = Column(String(20))  # 'SFTP', 'API', 'FHIR'
+    status = Column(String(20))  # 'active', 'inactive', 'error'
+    last_sync_at = Column(DateTime)
+    records_today = Column(Integer, default=0)
+    error_rate = Column(Float, default=0)
