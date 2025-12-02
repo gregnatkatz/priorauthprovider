@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -240,6 +240,11 @@ function App() {
     const [aiAdherence, setAiAdherence] = useState<any>(null)
     // Recovery rate metrics
     const [recoveryRate, setRecoveryRate] = useState<any>(null)
+    // Auto-feed timer state
+    const [autoFeedCountdown, setAutoFeedCountdown] = useState(0)
+    const [lastFeedResult, setLastFeedResult] = useState<{source: string, claims: number, denials: number, time: Date} | null>(null)
+    const autoFeedIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -410,6 +415,13 @@ function App() {
         const res = await fetch(`${API_URL}/api/feeds/ingest/${source}`, { method: 'POST' })
         const data = await res.json()
         console.log('Feed ingestion result:', data)
+        // Track last feed result for display
+        setLastFeedResult({
+          source: source,
+          claims: data.claims_added || data.claims_count || 0,
+          denials: data.denials_added || data.denials_count || 0,
+          time: new Date()
+        })
         // Refresh data after ingestion
         await fetchFeedStatus()
         await fetchDenials()
@@ -421,19 +433,63 @@ function App() {
       }
     }
 
+    const AUTO_FEED_INTERVAL_SECONDS = 30 // 30 seconds for demo (was 2 min)
+    
     const toggleAutoFeed = async () => {
       try {
         if (autoFeedEnabled) {
+          // Stop auto-feed
           await fetch(`${API_URL}/api/feeds/stop-auto`, { method: 'POST' })
           setAutoFeedEnabled(false)
+          setAutoFeedCountdown(0)
+          // Clear intervals
+          if (autoFeedIntervalRef.current) {
+            clearInterval(autoFeedIntervalRef.current)
+            autoFeedIntervalRef.current = null
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current)
+            countdownIntervalRef.current = null
+          }
         } else {
+          // Start auto-feed
           await fetch(`${API_URL}/api/feeds/start-auto`, { method: 'POST' })
           setAutoFeedEnabled(true)
+          
+          // Trigger immediate first feed so user sees instant results
+          await triggerFeedIngestion('Availity')
+          
+          // Set countdown for next feed
+          setAutoFeedCountdown(AUTO_FEED_INTERVAL_SECONDS)
+          
+          // Start countdown timer (updates every second)
+          countdownIntervalRef.current = setInterval(() => {
+            setAutoFeedCountdown(prev => {
+              if (prev <= 1) return AUTO_FEED_INTERVAL_SECONDS
+              return prev - 1
+            })
+          }, 1000)
+          
+          // Start auto-feed interval
+          autoFeedIntervalRef.current = setInterval(async () => {
+            // Alternate between sources for variety
+            const sources = ['Availity', 'Change Healthcare']
+            const source = sources[Math.floor(Math.random() * sources.length)]
+            await triggerFeedIngestion(source)
+          }, AUTO_FEED_INTERVAL_SECONDS * 1000)
         }
       } catch (error) {
         console.error('Error toggling auto feed:', error)
       }
     }
+    
+    // Cleanup intervals on unmount
+    useEffect(() => {
+      return () => {
+        if (autoFeedIntervalRef.current) clearInterval(autoFeedIntervalRef.current)
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+      }
+    }, [])
 
     const simulatePolicyChange = async () => {
       try {
@@ -3082,17 +3138,48 @@ function App() {
             {/* Auto-Feed Toggle */}
             <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
               <div>
-                <p className="font-medium text-slate-200">Auto-Ingest (every 2 min)</p>
+                <p className="font-medium text-slate-200">Auto-Ingest (every 30 sec)</p>
                 <p className="text-xs text-slate-400">Automatically fetch new claims from clearinghouses</p>
               </div>
               <Button 
                 onClick={toggleAutoFeed}
                 variant={autoFeedEnabled ? "destructive" : "outline"}
                 size="sm"
+                className={autoFeedEnabled ? "bg-red-600 hover:bg-red-700" : ""}
               >
-                {autoFeedEnabled ? 'Stop' : 'Start'}
+                {feedRunning ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                    Ingesting...
+                  </>
+                ) : autoFeedEnabled ? (
+                  <>
+                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
+                    Stop
+                  </>
+                ) : 'Start'}
               </Button>
             </div>
+            
+            {/* Auto-Feed Status - shows when running */}
+            {autoFeedEnabled && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="text-emerald-400 font-medium text-sm">Auto-Ingest Running</span>
+                  </div>
+                  <span className="text-slate-300 text-sm">
+                    Next feed in: <span className="font-mono text-emerald-400">{autoFeedCountdown}s</span>
+                  </span>
+                </div>
+                {lastFeedResult && (
+                  <p className="text-xs text-slate-400 mt-2">
+                    Last: {lastFeedResult.claims} claims ({lastFeedResult.denials} denials) from {lastFeedResult.source} at {lastFeedResult.time.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Feed Status */}
             {feedStatus && (
@@ -3186,7 +3273,9 @@ function App() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-3xl font-bold text-purple-400">
-                    {(recoveryRate.overall_success_rate * 100).toFixed(1)}%
+                    {isNaN(recoveryRate.overall_success_rate) || recoveryRate.overall_success_rate === null 
+                      ? '0.0' 
+                      : (recoveryRate.overall_success_rate * 100).toFixed(1)}%
                   </span>
                   <span className="text-emerald-400 font-medium">
                     {formatCurrency(recoveryRate.total_recovered || 0)}
