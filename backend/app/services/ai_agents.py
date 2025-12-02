@@ -267,38 +267,44 @@ class BaseAgent:
         """Override in subclasses"""
         raise NotImplementedError
     
-    async def call_llm(self, user_prompt: str) -> str:
-        """Call Azure OpenAI with the agent's system prompt using diversified models"""
+    async def call_llm(self, user_prompt: str, max_retries: int = 3) -> str:
+        """Call Azure OpenAI with retry logic and exponential backoff"""
         if not client:
             return self._fallback_response(user_prompt)
         
-        try:
-            # o3 and o1 models require max_completion_tokens instead of max_tokens
-            # They also don't support temperature parameter
-            is_reasoning_model = self.model in ["o3", "o1"]
-            
-            if is_reasoning_model:
-                response = client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "user", "content": f"{self.system_prompt}\n\n{user_prompt}"}
-                    ],
-                    max_completion_tokens=500
-                )
-            else:
-                response = client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.3,
-                    max_tokens=500
-                )
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"LLM call failed for {self.name} (model: {self.model}): {e}")
-            return self._fallback_response(user_prompt)
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                is_reasoning_model = self.model in ["o3", "o1"]
+                
+                if is_reasoning_model:
+                    response = client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "user", "content": f"{self.system_prompt}\n\n{user_prompt}"}
+                        ],
+                        max_completion_tokens=500
+                    )
+                else:
+                    response = client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": self.system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=500
+                    )
+                return response.choices[0].message.content
+            except Exception as e:
+                last_error = e
+                wait_time = (2 ** attempt)  # 1s, 2s, 4s exponential backoff
+                print(f"LLM call failed for {self.name} (model: {self.model}), attempt {attempt + 1}/{max_retries}: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+        
+        print(f"All {max_retries} retries failed for {self.name}: {last_error}")
+        return self._fallback_response(user_prompt)
     
     def _fallback_response(self, prompt: str) -> str:
         """Fallback when LLM is unavailable"""

@@ -2,10 +2,11 @@
 API Routes for Denial Management System
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from datetime import date
+import asyncio
 
 from app.database import get_db
 from app.services.data_service import create_data_service, SQLiteDataService
@@ -1372,6 +1373,113 @@ async def simulate_claim_ingestion(db: AsyncSession = Depends(get_db)):
 auto_feed_running = False
 auto_feed_task = None
 
+# Global lock to prevent concurrent feed ingestions (SQLite doesn't handle concurrent writes well)
+feed_ingestion_lock = asyncio.Lock()
+ai_processing_active = False
+
+# Background task to process AI analysis for feed denials
+async def process_feed_ai_background(feed_id: int, denials: list, source_name: str):
+    """
+    Background task to run LIVE AI agents on denials after feed ingestion.
+    This runs asynchronously after the HTTP response is returned.
+    """
+    global ai_processing_active
+    from sqlalchemy import text
+    from datetime import datetime
+    from app.services.ai_agents import AIAgentOrchestrator
+    from app.database import async_session_maker
+    
+    ai_processing_active = True
+    print(f"[AI Background] Starting AI analysis for feed {feed_id} with {len(denials)} denials")
+    
+    try:
+        orchestrator = AIAgentOrchestrator()
+        high_risk_count = 0
+        processed_count = 0
+        
+        # Process each denial with its own database session to avoid locking
+        for denial_id, claim_id, carc_code, amount in denials:
+            try:
+                # Build denial data for AI analysis
+                denial_data = {
+                    "denial_id": denial_id,
+                    "claim_id": claim_id,
+                    "carc_code": carc_code,
+                    "amount": float(amount) if amount else 0,
+                    "source": source_name
+                }
+                
+                # Call all 18 AI agents with retry logic
+                print(f"[AI Background] Analyzing denial {denial_id}...")
+                analysis = await orchestrator.analyze_denial(denial_data)
+                
+                # Determine risk level from AI analysis
+                risk_level = "LOW"
+                consensus_score = analysis.get("validation", {}).get("consensus_score", 0)
+                if consensus_score < 0.7:
+                    risk_level = "HIGH"
+                    high_risk_count += 1
+                elif consensus_score < 0.85:
+                    risk_level = "MEDIUM"
+                
+                # Extract recommendation
+                recommendation = analysis.get("combined_recommendation", "")
+                if isinstance(recommendation, dict):
+                    recommendation = str(recommendation.get("recommended_actions", ["Review denial"]))[:200]
+                elif isinstance(recommendation, str):
+                    recommendation = recommendation[:200]
+                else:
+                    recommendation = "Review denial"
+                
+                # Update denial with AI results using a fresh session
+                async with async_session_maker() as session:
+                    await session.execute(text("""
+                        UPDATE fact_denial 
+                        SET ai_risk_level = :risk, ai_recommended_action = :rec
+                        WHERE denial_id = :id
+                    """), {
+                        "risk": risk_level,
+                        "rec": recommendation,
+                        "id": denial_id
+                    })
+                    await session.commit()
+                
+                processed_count += 1
+                print(f"[AI Background] Denial {denial_id} analyzed: {risk_level} (consensus: {consensus_score:.2f})")
+                
+            except Exception as e:
+                print(f"[AI Background] Error analyzing denial {denial_id}: {e}")
+        
+        # Update feed status to complete
+        async with async_session_maker() as session:
+            await session.execute(text("""
+                UPDATE feed_ingestion 
+                SET status = 'complete'
+                WHERE id = :id
+            """), {"id": feed_id})
+            await session.commit()
+        
+        print(f"[AI Background] Feed {feed_id} AI analysis complete: {processed_count}/{len(denials)} denials, {high_risk_count} high-risk")
+        
+    except Exception as e:
+        print(f"[AI Background] Error in background AI processing for feed {feed_id}: {e}")
+        # Update feed status to failed
+        try:
+            async with async_session_maker() as session:
+                await session.execute(text("""
+                    UPDATE feed_ingestion 
+                    SET status = 'ai_failed', error_message = :error
+                    WHERE id = :id
+                """), {"id": feed_id, "error": str(e)[:500]})
+                await session.commit()
+        except Exception as e2:
+            print(f"[AI Background] Failed to update feed status: {e2}")
+    finally:
+        # Always clear the processing flag when done
+        ai_processing_active = False
+        print(f"[AI Background] AI processing flag cleared for feed {feed_id}")
+
+
 @router.post("/feeds/ingest/{source}")
 async def trigger_feed_ingestion(source: str, db: AsyncSession = Depends(get_db)):
     """
@@ -1382,21 +1490,36 @@ async def trigger_feed_ingestion(source: str, db: AsyncSession = Depends(get_db)
     Generates 5-15 realistic claims with proper CARC/RARC codes.
     Denied claims are automatically analyzed by live AI agents.
     """
+    global ai_processing_active
     from sqlalchemy import text
     import random
     from datetime import datetime, timedelta
     from app.services.ai_agents import AIAgentOrchestrator
-    import asyncio
     
     source_name = 'Availity' if source.lower() == 'availity' else 'Change Healthcare'
     
-    # Create feed ingestion record
-    insert_feed = text("""
-        INSERT INTO feed_ingestion (source, started_at, status, claims_added, denials_added)
-        VALUES (:source, :started_at, 'running', 0, 0)
-    """)
-    await db.execute(insert_feed, {"source": source_name, "started_at": datetime.utcnow()})
-    await db.commit()
+    # Check if AI processing is already active (prevent concurrent writes to SQLite)
+    if ai_processing_active:
+        return {
+            "feed_id": None,
+            "source": source_name,
+            "status": "busy",
+            "message": "AI processing is already active. Please wait for current analysis to complete.",
+            "claims_added": 0,
+            "denials_added": 0,
+            "timestamp": datetime.utcnow().isoformat(),
+            "ai_pipeline": {"is_live": True, "status": "busy"}
+        }
+    
+    # Acquire lock for feed ingestion
+    async with feed_ingestion_lock:
+        # Create feed ingestion record
+        insert_feed = text("""
+            INSERT INTO feed_ingestion (source, started_at, status, claims_added, denials_added)
+            VALUES (:source, :started_at, 'running', 0, 0)
+        """)
+        await db.execute(insert_feed, {"source": source_name, "started_at": datetime.utcnow()})
+        await db.commit()
     
     # Get the feed ID
     feed_result = await db.execute(text("SELECT MAX(id) FROM feed_ingestion"))
@@ -1549,14 +1672,19 @@ async def trigger_feed_ingestion(source: str, db: AsyncSession = Depends(get_db)
         
         await db.commit()
         
-        # NOTE: Live AI agents are skipped during feed ingestion for performance
-        # (Azure OpenAI calls take 60-120+ seconds per denial which is too slow for demo)
-        # Live AI is still available via "Re-Run AI Validation" button on individual denials
+        # Get denial IDs we just created for background AI processing
+        denial_ids_result = await db.execute(text("""
+            SELECT denial_id, claim_id, carc_code, adjustment_amount
+            FROM fact_denial 
+            ORDER BY denial_id DESC 
+            LIMIT :limit
+        """), {"limit": denials_added})
+        new_denials = [(r[0], r[1], r[2], r[3]) for r in denial_ids_result.fetchall()]
         
-        # Update feed ingestion record
+        # Update feed ingestion record (claims/denials added, AI still running)
         update_feed = text("""
             UPDATE feed_ingestion 
-            SET completed_at = :completed, status = 'complete', 
+            SET completed_at = :completed, status = 'ai_running', 
                 claims_added = :claims, denials_added = :denials
             WHERE id = :id
         """)
@@ -1568,48 +1696,52 @@ async def trigger_feed_ingestion(source: str, db: AsyncSession = Depends(get_db)
         })
         await db.commit()
         
-        # Build AI pipeline summary for frontend (simulated - live AI available via Re-Run button)
-        high_risk_count = max(0, denials_added - 1)
+        # Schedule background task to run LIVE AI agents on each denial
+        # This runs after the response is returned, so the frontend gets a quick response
+        asyncio.create_task(process_feed_ai_background(feed_id, new_denials, source_name))
+        
+        # Build AI pipeline summary - AI is running in background
         ai_pipeline = {
-            "is_live": False,  # Simulated during feed ingestion for performance
+            "is_live": True,  # LIVE AI agents are being called in background
+            "status": "running",  # AI analysis is running in background
             "denials_analyzed": denials_added,
             "models_used": ["gpt-4.1", "o1", "o3", "DeepSeek"],
-            "results": [],
+            "results": [],  # Results will be available when AI completes
             "steps": [
                 {"id": "intake", "name": "Intake & Normalization", "status": "auto_processed", "risk": "low", 
                  "outcome": f"Parsed {claims_added} claims from 835 EDI feed", "model": "gpt-4.1-nano"},
-                {"id": "eligibility", "name": "Eligibility & Coverage", "status": "needs_review" if denials_added > 2 else "auto_processed", 
-                 "risk": "medium" if denials_added > 2 else "low",
-                 "outcome": f"{denials_added} eligibility issues flagged", "model": "gpt-4.1-mini"},
-                {"id": "coding", "name": "Coding & Modifiers", "status": "needs_review" if denials_added > 1 else "auto_processed",
-                 "risk": "high" if denials_added > 3 else "medium",
-                 "outcome": f"{max(1, denials_added // 2)} coding discrepancies found", "model": "gpt-4.1"},
-                {"id": "medical_necessity", "name": "Medical Necessity", "status": "needs_review" if denials_added > 0 else "auto_processed",
-                 "risk": "high" if denials_added > 2 else "medium",
-                 "outcome": f"{denials_added} claims analyzed for medical necessity", "model": "o3"},
-                {"id": "timely_filing", "name": "Timely Filing Check", "status": "auto_processed", "risk": "low",
-                 "outcome": f"All {claims_added} claims within filing deadline", "model": "gpt-4.1-nano"},
-                {"id": "documentation", "name": "Documentation Review", "status": "needs_review" if denials_added > 1 else "auto_processed",
-                 "risk": "high" if denials_added > 2 else "medium",
-                 "outcome": f"{max(0, denials_added - 1)} claims missing clinical notes", "model": "gpt-4.1-mini"},
-                {"id": "appeal_strategy", "name": "Appeal Strategy", "status": "auto_processed", "risk": "low",
-                 "outcome": f"{denials_added} denials evaluated for appeal viability", "model": "DeepSeek"},
-                {"id": "risk_triage", "name": "Risk Triage & Routing", "status": "needs_review" if high_risk_count > 0 else "auto_processed",
-                 "risk": "high" if high_risk_count > 0 else "medium",
-                 "outcome": f"{high_risk_count} high-risk denials queued for nurse review", "model": "o1"}
+                {"id": "eligibility", "name": "Eligibility & Coverage", "status": "running", 
+                 "risk": "medium",
+                 "outcome": f"Analyzing {denials_added} denials...", "model": "gpt-4.1-mini"},
+                {"id": "coding", "name": "Coding & Modifiers", "status": "pending",
+                 "risk": "medium",
+                 "outcome": "Waiting for analysis...", "model": "gpt-4.1"},
+                {"id": "medical_necessity", "name": "Medical Necessity", "status": "pending",
+                 "risk": "medium",
+                 "outcome": "Waiting for analysis...", "model": "o3"},
+                {"id": "timely_filing", "name": "Timely Filing Check", "status": "pending", "risk": "low",
+                 "outcome": "Waiting for analysis...", "model": "gpt-4.1-nano"},
+                {"id": "documentation", "name": "Documentation Review", "status": "pending",
+                 "risk": "medium",
+                 "outcome": "Waiting for analysis...", "model": "gpt-4.1-mini"},
+                {"id": "appeal_strategy", "name": "Appeal Strategy", "status": "pending", "risk": "low",
+                 "outcome": "Waiting for analysis...", "model": "DeepSeek"},
+                {"id": "risk_triage", "name": "Risk Triage & Routing", "status": "pending",
+                 "risk": "medium",
+                 "outcome": "Waiting for analysis...", "model": "o1"}
             ],
             "summary": {
-                "auto_processed": 3,
-                "needs_review": denials_added,
-                "low_risk": 3,
-                "high_risk": high_risk_count
+                "auto_processed": 0,
+                "needs_review": 0,
+                "low_risk": 0,
+                "high_risk": 0
             }
         }
         
         return {
             "feed_id": feed_id,
             "source": source_name,
-            "status": "complete",
+            "status": "ai_running",
             "claims_added": claims_added,
             "denials_added": denials_added,
             "timestamp": datetime.utcnow().isoformat(),
