@@ -298,6 +298,12 @@ function App() {
     const [highRiskClaims, setHighRiskClaims] = useState<any[]>([])
     const [reconciliationData, setReconciliationData] = useState<any>(null)
     const [lifecycleLoading, setLifecycleLoading] = useState(false)
+    
+    // Clearinghouse state
+    const [clearinghouseStatus, setClearinghouseStatus] = useState<any>(null)
+    const [clearinghouseLogs, setClearinghouseLogs] = useState<any[]>([])
+    const [pollingAvaility, setPollingAvaility] = useState(false)
+    const [pollingChange, setPollingChange] = useState(false)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -492,18 +498,85 @@ function App() {
     const fetchLifecycleData = async () => {
       setLifecycleLoading(true)
       try {
-        const [sourcesRes, highRiskRes, reconRes] = await Promise.all([
+        const [sourcesRes, highRiskRes, reconRes, chStatusRes] = await Promise.all([
           fetch(`${API_URL}/api/lifecycle/sources`),
           fetch(`${API_URL}/api/lifecycle/high-risk-claims`),
-          fetch(`${API_URL}/api/lifecycle/reconciliation`)
+          fetch(`${API_URL}/api/lifecycle/reconciliation`),
+          fetch(`${API_URL}/api/clearinghouse/status`)
         ])
         setLifecycleSources(await sourcesRes.json())
         setHighRiskClaims((await highRiskRes.json()).claims || [])
         setReconciliationData(await reconRes.json())
+        setClearinghouseStatus(await chStatusRes.json())
       } catch (error) {
         console.error('Error fetching lifecycle data:', error)
       }
       setLifecycleLoading(false)
+    }
+
+    // Clearinghouse polling functions
+    const pollAvaility = async () => {
+      setPollingAvaility(true)
+      try {
+        const res = await fetch(`${API_URL}/api/clearinghouse/availity/poll`, { method: 'POST' })
+        const data = await res.json()
+        setClearinghouseLogs(prev => [{
+          timestamp: new Date().toISOString(),
+          clearinghouse: 'Availity',
+          files: data.files_processed || 0,
+          claims: data.claims_ingested || 0,
+          denials: data.denials_found || 0,
+          payers: data.payers_included || []
+        }, ...prev.slice(0, 9)])
+        // Refresh lifecycle data after polling
+        fetchLifecycleData()
+      } catch (error) {
+        console.error('Error polling Availity:', error)
+      }
+      setPollingAvaility(false)
+    }
+
+    const pollChangeHealthcare = async () => {
+      setPollingChange(true)
+      try {
+        const res = await fetch(`${API_URL}/api/clearinghouse/change/poll`, { method: 'POST' })
+        const data = await res.json()
+        setClearinghouseLogs(prev => [{
+          timestamp: new Date().toISOString(),
+          clearinghouse: 'Change Healthcare',
+          files: data.files_processed || 0,
+          claims: data.claims_ingested || 0,
+          denials: data.denials_found || 0,
+          payers: data.payers_included || []
+        }, ...prev.slice(0, 9)])
+        // Refresh lifecycle data after polling
+        fetchLifecycleData()
+      } catch (error) {
+        console.error('Error polling Change Healthcare:', error)
+      }
+      setPollingChange(false)
+    }
+
+    const simulateBatchTraffic = async (days: number) => {
+      setPollingAvaility(true)
+      setPollingChange(true)
+      try {
+        const res = await fetch(`${API_URL}/api/clearinghouse/simulate/batch?days=${days}`, { method: 'POST' })
+        const data = await res.json()
+        setClearinghouseLogs(prev => [{
+          timestamp: new Date().toISOString(),
+          clearinghouse: 'Batch Simulation',
+          files: data.total_files || 0,
+          claims: data.total_claims || 0,
+          denials: data.total_denials || 0,
+          payers: ['All Payers']
+        }, ...prev.slice(0, 9)])
+        fetchLifecycleData()
+      } catch (error) {
+        console.error('Error simulating batch traffic:', error)
+      }
+      setPollingAvaility(false)
+      setPollingChange(false)
     }
 
     // Helper functions for agent pipeline processing
@@ -3907,22 +3980,79 @@ function App() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Denial Rate Comparison</CardTitle>
-          <CardDescription>Denial rates across all payers</CardDescription>
+      <Card className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border-slate-800/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold text-white">Denial Rate Comparison</CardTitle>
+          <CardDescription className="text-slate-400">Denial rates and appeal success across all payers</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={payers} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 0.3]} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                <YAxis type="category" dataKey="payer_name" width={150} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => `${(value * 100).toFixed(1)}%`} />
-                <Legend />
-                <Bar dataKey="avg_denial_rate" name="Denial Rate" fill="#ef4444" />
-                <Bar dataKey="avg_appeal_success_rate" name="Appeal Success" fill="#22c55e" />
+              <BarChart 
+                data={payers} 
+                layout="vertical"
+                margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+                barGap={4}
+                barCategoryGap="20%"
+              >
+                <defs>
+                  <linearGradient id="denialGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#dc2626" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#f87171" stopOpacity={0.9} />
+                  </linearGradient>
+                  <linearGradient id="successGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#059669" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.9} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} horizontal={true} vertical={false} />
+                <XAxis 
+                  type="number" 
+                  domain={[0, 0.7]} 
+                  tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  axisLine={{ stroke: '#475569' }}
+                  tickLine={{ stroke: '#475569' }}
+                />
+                <YAxis 
+                  type="category" 
+                  dataKey="payer_name" 
+                  width={140} 
+                  tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 500 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [`${(value * 100).toFixed(1)}%`, name]}
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                  }}
+                  labelStyle={{ color: '#f1f5f9', fontWeight: 600 }}
+                  itemStyle={{ color: '#cbd5e1' }}
+                  cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  iconType="circle"
+                  formatter={(value) => <span style={{ color: '#e2e8f0', fontSize: '12px', marginLeft: '4px' }}>{value}</span>}
+                />
+                <Bar 
+                  dataKey="avg_denial_rate" 
+                  name="Denial Rate" 
+                  fill="url(#denialGradient)"
+                  radius={[0, 4, 4, 0]}
+                  maxBarSize={18}
+                />
+                <Bar 
+                  dataKey="avg_appeal_success_rate" 
+                  name="Appeal Success" 
+                  fill="url(#successGradient)"
+                  radius={[0, 4, 4, 0]}
+                  maxBarSize={18}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -4543,6 +4673,216 @@ function App() {
         </div>
       ) : (
         <>
+          {/* Clearinghouse Feed Panel - Two Column Layout */}
+          <Card className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border-slate-800/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Activity className="h-5 w-5 text-blue-400" />
+                    Clearinghouse Feed
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    {clearinghouseStatus?.mode === 'simulation' ? 'Simulation Mode' : 'Production Mode'} - Real-time 835 ingestion from Availity and Change Healthcare
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => simulateBatchTraffic(7)}
+                  disabled={pollingAvaility || pollingChange}
+                  className="text-xs"
+                >
+                  Simulate 7 Days
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Availity Column */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${clearinghouseStatus?.availity?.status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
+                      <span className="font-semibold text-white">Availity</span>
+                      <Badge variant="outline" className="text-xs">{clearinghouseStatus?.availity?.connection_type || 'SFTP'}</Badge>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={pollAvaility}
+                      disabled={pollingAvaility}
+                      className="text-xs bg-blue-600 hover:bg-blue-700"
+                    >
+                      {pollingAvaility ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
+                      Poll Now
+                    </Button>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
+                    <div className="text-xs text-slate-400">Payers:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(clearinghouseStatus?.availity?.payers || ['Florida Blue', 'Humana', 'Cigna', 'Medicare']).map((payer: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs bg-blue-900/50 text-blue-300">{payer}</Badge>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                      <div className="bg-slate-900/50 rounded p-2">
+                        <div className="text-slate-400">Files Pending</div>
+                        <div className="text-lg font-bold text-white">{clearinghouseStatus?.availity?.files_pending || 0}</div>
+                      </div>
+                      <div className="bg-slate-900/50 rounded p-2">
+                        <div className="text-slate-400">Last Poll</div>
+                        <div className="text-sm font-medium text-white">{clearinghouseStatus?.availity?.last_poll ? new Date(clearinghouseStatus.availity.last_poll).toLocaleTimeString() : 'Never'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Change Healthcare Column */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${clearinghouseStatus?.change_healthcare?.status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
+                      <span className="font-semibold text-white">Change Healthcare (Optum)</span>
+                      <Badge variant="outline" className="text-xs">{clearinghouseStatus?.change_healthcare?.connection_type || 'REST API'}</Badge>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={pollChangeHealthcare}
+                      disabled={pollingChange}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {pollingChange ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
+                      Poll Now
+                    </Button>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
+                    <div className="text-xs text-slate-400">Payers:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(clearinghouseStatus?.change_healthcare?.payers || ['UnitedHealthcare', 'Aetna', 'Anthem', 'Medicaid']).map((payer: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs bg-emerald-900/50 text-emerald-300">{payer}</Badge>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                      <div className="bg-slate-900/50 rounded p-2">
+                        <div className="text-slate-400">Files Pending</div>
+                        <div className="text-lg font-bold text-white">{clearinghouseStatus?.change_healthcare?.files_pending || 0}</div>
+                      </div>
+                      <div className="bg-slate-900/50 rounded p-2">
+                        <div className="text-slate-400">Last Poll</div>
+                        <div className="text-sm font-medium text-white">{clearinghouseStatus?.change_healthcare?.last_poll ? new Date(clearinghouseStatus.change_healthcare.last_poll).toLocaleTimeString() : 'Never'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity Log */}
+              {clearinghouseLogs.length > 0 && (
+                <div className="mt-4 border-t border-slate-700/50 pt-4">
+                  <div className="text-xs font-medium text-slate-400 mb-2">Recent Activity</div>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {clearinghouseLogs.map((log, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs bg-slate-800/30 rounded px-2 py-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                          <Badge variant="outline" className={`text-xs ${log.clearinghouse === 'Availity' ? 'border-blue-500/50 text-blue-400' : 'border-emerald-500/50 text-emerald-400'}`}>
+                            {log.clearinghouse}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-300">
+                          <span>{log.files} files</span>
+                          <span>{log.claims} claims</span>
+                          <span className="text-red-400">{log.denials} denials</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Manual EDI File Upload */}
+              <div className="mt-4 border-t border-slate-700/50 pt-4">
+                <div className="text-xs font-medium text-slate-400 mb-2">Manual EDI Upload</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border-2 border-dashed border-slate-600 rounded-lg p-4 text-center hover:border-blue-500/50 transition-colors cursor-pointer">
+                    <FileText className="h-8 w-8 mx-auto mb-2 text-blue-400" />
+                    <div className="text-sm font-medium text-white">Upload 837 File</div>
+                    <div className="text-xs text-slate-400">Claim submissions (837P/837I)</div>
+                    <input 
+                      type="file" 
+                      accept=".edi,.txt,.x12"
+                      className="hidden"
+                      id="upload-837"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const content = await file.text()
+                          const fileType = file.name.toLowerCase().includes('837i') ? '837I' : '837P'
+                          try {
+                            const res = await fetch(`${API_URL}/api/ingest/837?file_type=${fileType}&file_content=${encodeURIComponent(content)}`, { method: 'POST' })
+                            const data = await res.json()
+                            setClearinghouseLogs(prev => [{
+                              timestamp: new Date().toISOString(),
+                              clearinghouse: 'Manual Upload',
+                              files: 1,
+                              claims: data.total_claims || 0,
+                              denials: 0,
+                              payers: [fileType]
+                            }, ...prev.slice(0, 9)])
+                          } catch (err) {
+                            console.error('Error uploading 837:', err)
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="upload-837" className="mt-2 inline-block">
+                      <Button size="sm" variant="outline" className="text-xs pointer-events-none">
+                        Select File
+                      </Button>
+                    </label>
+                  </div>
+                  <div className="border-2 border-dashed border-slate-600 rounded-lg p-4 text-center hover:border-emerald-500/50 transition-colors cursor-pointer">
+                    <FileText className="h-8 w-8 mx-auto mb-2 text-emerald-400" />
+                    <div className="text-sm font-medium text-white">Upload 835 File</div>
+                    <div className="text-xs text-slate-400">Remittance advice (payments/denials)</div>
+                    <input 
+                      type="file" 
+                      accept=".edi,.txt,.x12"
+                      className="hidden"
+                      id="upload-835"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const content = await file.text()
+                          try {
+                            const res = await fetch(`${API_URL}/api/ingest/835?file_content=${encodeURIComponent(content)}`, { method: 'POST' })
+                            const data = await res.json()
+                            setClearinghouseLogs(prev => [{
+                              timestamp: new Date().toISOString(),
+                              clearinghouse: 'Manual Upload',
+                              files: 1,
+                              claims: data.total_claims || 0,
+                              denials: data.denials_found || 0,
+                              payers: ['835']
+                            }, ...prev.slice(0, 9)])
+                            fetchLifecycleData()
+                          } catch (err) {
+                            console.error('Error uploading 835:', err)
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="upload-835" className="mt-2 inline-block">
+                      <Button size="sm" variant="outline" className="text-xs pointer-events-none">
+                        Select File
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Data Sources Status */}
           <Card>
             <CardHeader>
