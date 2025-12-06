@@ -407,18 +407,173 @@ AI recommendations, missing documentation checklist, and one-click actions.
 - Medical necessity validation
 - Prior authorization automation
 
+## Clearinghouse Integration
+
+The platform integrates with two primary clearinghouses for 835 remittance data ingestion, routing claims based on payer relationships.
+
+### Clearinghouse Architecture
+
+```
+                    ┌─────────────────────────────────────────────────────────┐
+                    │              Denial Intelligence Platform               │
+                    │                                                         │
+                    │  ┌─────────────┐              ┌─────────────┐          │
+                    │  │   Availity  │              │   Change    │          │
+                    │  │    SFTP     │              │  Healthcare │          │
+                    │  │   Poller    │              │  REST API   │          │
+                    │  └──────┬──────┘              └──────┬──────┘          │
+                    │         │                            │                  │
+                    │         ▼                            ▼                  │
+                    │  ┌─────────────────────────────────────────────┐       │
+                    │  │           835 Parser & Normalizer           │       │
+                    │  └─────────────────────┬───────────────────────┘       │
+                    │                        │                                │
+                    │                        ▼                                │
+                    │  ┌─────────────────────────────────────────────┐       │
+                    │  │         18 AI Agents (Live Azure)           │       │
+                    │  └─────────────────────┬───────────────────────┘       │
+                    │                        │                                │
+                    │                        ▼                                │
+                    │  ┌─────────────────────────────────────────────┐       │
+                    │  │              SQLite Database                 │       │
+                    │  └─────────────────────────────────────────────┘       │
+                    └─────────────────────────────────────────────────────────┘
+```
+
+### Payer-to-Clearinghouse Routing
+
+| Payer | Clearinghouse | Volume % | Avg Days to Pay | Base Denial Rate | Top CARC |
+|-------|---------------|----------|-----------------|------------------|----------|
+| Florida Blue | Availity | 22% | 21 days | 18% | 197 (Prior Auth) |
+| UnitedHealthcare | Change Healthcare | 18% | 28 days | 24% | 50 (Med Necessity) |
+| Medicare | Availity | 16% | 14 days | 8% | 96 (Non-Covered) |
+| Humana | Availity | 12% | 24 days | 20% | 16 (Missing Info) |
+| Aetna | Change Healthcare | 10% | 30 days | 26% | 50 (Med Necessity) |
+| Cigna | Availity | 8% | 25 days | 22% | 197 (Prior Auth) |
+| Florida Medicaid | Change Healthcare | 7% | 45 days | 32% | 27 (Coverage) |
+| Anthem Blue Cross | Change Healthcare | 4% | 26 days | 20% | 197 (Prior Auth) |
+| Tricare | Availity | 2% | 18 days | 11% | 16 (Missing Info) |
+| Molina Healthcare | Change Healthcare | 1% | 40 days | 28% | 27 (Coverage) |
+
+### Clearinghouse API Endpoints
+
+**Status Check:**
+```bash
+GET /api/clearinghouse/status
+```
+Returns connection status for both clearinghouses (Availity and Change Healthcare).
+
+**Poll Availity (SFTP):**
+```bash
+POST /api/clearinghouse/availity/poll
+```
+Simulates polling Availity SFTP for new 835 remittance files. Generates realistic denials for FL Blue, Humana, Cigna, Medicare payers.
+
+**Poll Change Healthcare (REST API):**
+```bash
+POST /api/clearinghouse/change/poll
+```
+Simulates polling Change Healthcare API for new 835 remittance data. Generates realistic denials for UHC, Aetna, Anthem, Medicaid payers.
+
+**Batch Simulation:**
+```bash
+POST /api/clearinghouse/simulate/batch?days=7
+```
+Generates N days of synthetic clearinghouse traffic based on AdventHealth's payer mix.
+
+**Submit 837 Claim:**
+```bash
+POST /api/clearinghouse/submit/837?claim_type=837P&payer_name=Florida%20Blue
+```
+Simulates submitting an 837 claim to the appropriate clearinghouse based on payer routing.
+
+### Production Integration (Future)
+
+**Availity SFTP Connection:**
+```python
+# Environment variables required
+AVAILITY_SFTP_HOST=sftp.availity.com
+AVAILITY_SFTP_PORT=22
+AVAILITY_SFTP_USER=your_username
+AVAILITY_SFTP_PASS=your_password
+
+# Directory structure
+/SendFiles/    # Upload 837 claims
+/ReceiveFiles/ # Download 835 remittances
+```
+
+**Optum/Change Healthcare REST API:**
+```python
+# Environment variables required
+OPTUM_CLIENT_ID=your_client_id
+OPTUM_CLIENT_SECRET=your_client_secret
+OPTUM_API_BASE=https://api.optum.com/medicalnetwork
+
+# OAuth 2.0 authentication
+POST /oauth/token
+GET /claims/v1/remittance
+```
+
+### AdventHealth Facility Configuration
+
+| Facility | NPI | Volume Weight | Primary Clearinghouse |
+|----------|-----|---------------|----------------------|
+| AdventHealth Orlando | 1234567890 | 25% | Availity |
+| AdventHealth Tampa | 1234567891 | 15% | Availity |
+| AdventHealth Celebration | 1234567892 | 12% | Availity |
+| AdventHealth Altamonte Springs | 1234567893 | 10% | Availity |
+| AdventHealth Daytona Beach | 1234567894 | 10% | Change Healthcare |
+| AdventHealth Winter Park | 1234567895 | 8% | Availity |
+| AdventHealth Fish Memorial | 1234567896 | 8% | Change Healthcare |
+| AdventHealth Waterman | 1234567897 | 6% | Availity |
+| AdventHealth Ocala | 1234567898 | 4% | Change Healthcare |
+| AdventHealth Palm Coast | 1234567899 | 2% | Availity |
+
+### CARC Code Distribution by Category
+
+| Category | CARC Codes | Percentage |
+|----------|------------|------------|
+| Prior Authorization | 197, 198, 39 | 28% |
+| Medical Necessity | 50, 55, 96 | 24% |
+| Coding/Billing Errors | 4, 5, 236 | 18% |
+| Eligibility Issues | 27, 31, 32 | 12% |
+| Duplicate Claims | 18 | 8% |
+| Timely Filing | 29 | 5% |
+| Bundling Issues | 97, 234 | 5% |
+
+### Production Timeline
+
+| Week | Milestone |
+|------|-----------|
+| Week 1 | Availity SFTP credentials, test connection |
+| Week 2 | Optum API enrollment, OAuth setup |
+| Week 3 | Trading partner agreements, payer ID mapping |
+| Week 4 | End-to-end testing with live data |
+| Week 5 | Production cutover, monitoring setup |
+
+### What AdventHealth Needs to Provide
+
+1. **Availity Credentials**: SFTP username/password, trading partner ID
+2. **Optum API Access**: Client ID/secret, API subscription
+3. **Payer IDs**: Payer-specific identifiers for each contracted payer
+4. **Facility NPIs**: National Provider Identifiers for each facility
+5. **Tax ID (TIN)**: Organization tax identification number
+6. **HIPAA BAA**: Business Associate Agreement for PHI handling
+
 ## AdventHealth Payer Configuration
 
 The platform is configured with AdventHealth's primary payer mix:
 
-| Payer | Type | Avg Days to Pay | Denial Rate |
-|-------|------|-----------------|-------------|
-| Medicare | Government | 28 days | 8% |
-| BCBS FL | Commercial | 35 days | 28% |
-| United | Commercial | 32 days | 17% |
-| Aetna | Commercial | 38 days | 32% |
-| Cigna | Commercial | 34 days | 21% |
-| Humana | Medicare Advantage | 30 days | 19% |
+| Payer | Type | Clearinghouse | Avg Days to Pay | Denial Rate | Base Yield |
+|-------|------|---------------|-----------------|-------------|------------|
+| Florida Blue | Commercial | Availity | 21 days | 18% | 78% |
+| UnitedHealthcare | Commercial | Change Healthcare | 28 days | 24% | 74% |
+| Medicare | Government | Availity | 14 days | 8% | 92% |
+| Humana | Commercial | Availity | 24 days | 20% | 76% |
+| Aetna | Commercial | Change Healthcare | 30 days | 26% | 72% |
+| Cigna | Commercial | Availity | 25 days | 22% | 75% |
+| Florida Medicaid | Medicaid | Change Healthcare | 45 days | 32% | 68% |
+| Anthem Blue Cross | Commercial | Change Healthcare | 26 days | 20% | 73% |
 
 ## License
 

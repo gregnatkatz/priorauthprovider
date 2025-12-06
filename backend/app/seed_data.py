@@ -71,18 +71,31 @@ RARC_CODES = [
     {"code": "N657", "description": "This should be billed with the appropriate code for the service/supply provided"},
 ]
 
-# Payer data - AdventHealth's primary payers
+# Payer data - AdventHealth's primary payers with clearinghouse routing
+# From Clearinghouse Addendum: Availity (FL Blue, Humana, Cigna, Medicare) and Optum/CHC (UHC, Aetna, Anthem, Medicaid)
 PAYERS = [
-    # Primary AdventHealth Payers (Medicare, BCBS FL, United, Aetna, Cigna, Humana)
-    {"name": "Medicare", "type": "Medicare", "denial_rate": 0.12, "appeal_success": 0.65, "days_to_decision": 30},
-    {"name": "BCBS FL", "type": "Commercial", "denial_rate": 0.18, "appeal_success": 0.57, "days_to_decision": 13},
-    {"name": "United", "type": "Commercial", "denial_rate": 0.20, "appeal_success": 0.52, "days_to_decision": 14},
-    {"name": "Aetna", "type": "Commercial", "denial_rate": 0.22, "appeal_success": 0.58, "days_to_decision": 10},
-    {"name": "Cigna", "type": "Commercial", "denial_rate": 0.16, "appeal_success": 0.60, "days_to_decision": 11},
-    {"name": "Humana", "type": "Commercial", "denial_rate": 0.19, "appeal_success": 0.50, "days_to_decision": 15},
+    # Primary AdventHealth Payers with clearinghouse routing
+    {"name": "Florida Blue", "type": "Commercial", "denial_rate": 0.18, "appeal_success": 0.57, "days_to_decision": 13,
+     "clearinghouse": "availity", "volume_pct": 0.22, "avg_days_to_pay": 21, "base_yield": 0.78, "top_denial_carc": "197"},
+    {"name": "UnitedHealthcare", "type": "Commercial", "denial_rate": 0.24, "appeal_success": 0.52, "days_to_decision": 14,
+     "clearinghouse": "change_healthcare", "volume_pct": 0.18, "avg_days_to_pay": 28, "base_yield": 0.74, "top_denial_carc": "50"},
+    {"name": "Medicare", "type": "Medicare", "denial_rate": 0.08, "appeal_success": 0.65, "days_to_decision": 30,
+     "clearinghouse": "availity", "volume_pct": 0.16, "avg_days_to_pay": 14, "base_yield": 0.92, "top_denial_carc": "96"},
+    {"name": "Humana", "type": "Commercial", "denial_rate": 0.20, "appeal_success": 0.50, "days_to_decision": 15,
+     "clearinghouse": "availity", "volume_pct": 0.12, "avg_days_to_pay": 24, "base_yield": 0.76, "top_denial_carc": "16"},
+    {"name": "Aetna", "type": "Commercial", "denial_rate": 0.26, "appeal_success": 0.58, "days_to_decision": 10,
+     "clearinghouse": "change_healthcare", "volume_pct": 0.10, "avg_days_to_pay": 30, "base_yield": 0.72, "top_denial_carc": "50"},
+    {"name": "Cigna", "type": "Commercial", "denial_rate": 0.22, "appeal_success": 0.60, "days_to_decision": 11,
+     "clearinghouse": "availity", "volume_pct": 0.08, "avg_days_to_pay": 25, "base_yield": 0.75, "top_denial_carc": "197"},
+    {"name": "Florida Medicaid", "type": "Medicaid", "denial_rate": 0.32, "appeal_success": 0.45, "days_to_decision": 45,
+     "clearinghouse": "change_healthcare", "volume_pct": 0.07, "avg_days_to_pay": 45, "base_yield": 0.68, "top_denial_carc": "27"},
     # Secondary payers
-    {"name": "Florida Medicaid", "type": "Medicaid", "denial_rate": 0.20, "appeal_success": 0.45, "days_to_decision": 45},
-    {"name": "Tricare", "type": "Government", "denial_rate": 0.11, "appeal_success": 0.70, "days_to_decision": 21},
+    {"name": "Anthem Blue Cross", "type": "Commercial", "denial_rate": 0.20, "appeal_success": 0.55, "days_to_decision": 18,
+     "clearinghouse": "change_healthcare", "volume_pct": 0.04, "avg_days_to_pay": 26, "base_yield": 0.73, "top_denial_carc": "197"},
+    {"name": "Tricare", "type": "Government", "denial_rate": 0.11, "appeal_success": 0.70, "days_to_decision": 21,
+     "clearinghouse": "availity", "volume_pct": 0.02, "avg_days_to_pay": 18, "base_yield": 0.85, "top_denial_carc": "16"},
+    {"name": "Molina Healthcare", "type": "Medicaid", "denial_rate": 0.28, "appeal_success": 0.48, "days_to_decision": 35,
+     "clearinghouse": "change_healthcare", "volume_pct": 0.01, "avg_days_to_pay": 40, "base_yield": 0.70, "top_denial_carc": "27"},
 ]
 
 # Payer-specific denial patterns for high-denial procedures
@@ -123,18 +136,28 @@ PAYER_PROCEDURE_DENIAL_RATES = {
     }
 }
 
-# AdventHealth facilities
+# AdventHealth facilities with NPIs and volume weights (from Clearinghouse Addendum)
 FACILITIES = [
-    {"name": "AdventHealth Orlando", "type": "Hospital", "beds": 1368, "city": "Orlando", "state": "FL"},
-    {"name": "AdventHealth Tampa", "type": "Hospital", "beds": 542, "city": "Tampa", "state": "FL"},
-    {"name": "AdventHealth Celebration", "type": "Hospital", "beds": 237, "city": "Celebration", "state": "FL"},
-    {"name": "AdventHealth Altamonte Springs", "type": "Hospital", "beds": 398, "city": "Altamonte Springs", "state": "FL"},
-    {"name": "AdventHealth Daytona Beach", "type": "Hospital", "beds": 323, "city": "Daytona Beach", "state": "FL"},
-    {"name": "AdventHealth Winter Park", "type": "Hospital", "beds": 305, "city": "Winter Park", "state": "FL"},
-    {"name": "AdventHealth Fish Memorial", "type": "Hospital", "beds": 175, "city": "Orange City", "state": "FL"},
-    {"name": "AdventHealth Waterman", "type": "Hospital", "beds": 269, "city": "Tavares", "state": "FL"},
-    {"name": "AdventHealth Ocala", "type": "Hospital", "beds": 284, "city": "Ocala", "state": "FL"},
-    {"name": "AdventHealth Palm Coast", "type": "Hospital", "beds": 99, "city": "Palm Coast", "state": "FL"},
+    {"name": "AdventHealth Orlando", "type": "Hospital", "beds": 1368, "city": "Orlando", "state": "FL",
+     "npi": "1234567890", "volume_weight": 0.25, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Tampa", "type": "Hospital", "beds": 542, "city": "Tampa", "state": "FL",
+     "npi": "1234567891", "volume_weight": 0.15, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Celebration", "type": "Hospital", "beds": 237, "city": "Celebration", "state": "FL",
+     "npi": "1234567892", "volume_weight": 0.12, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Altamonte Springs", "type": "Hospital", "beds": 398, "city": "Altamonte Springs", "state": "FL",
+     "npi": "1234567893", "volume_weight": 0.10, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Daytona Beach", "type": "Hospital", "beds": 323, "city": "Daytona Beach", "state": "FL",
+     "npi": "1234567894", "volume_weight": 0.10, "primary_clearinghouse": "change_healthcare"},
+    {"name": "AdventHealth Winter Park", "type": "Hospital", "beds": 305, "city": "Winter Park", "state": "FL",
+     "npi": "1234567895", "volume_weight": 0.08, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Fish Memorial", "type": "Hospital", "beds": 175, "city": "Orange City", "state": "FL",
+     "npi": "1234567896", "volume_weight": 0.08, "primary_clearinghouse": "change_healthcare"},
+    {"name": "AdventHealth Waterman", "type": "Hospital", "beds": 269, "city": "Tavares", "state": "FL",
+     "npi": "1234567897", "volume_weight": 0.06, "primary_clearinghouse": "availity"},
+    {"name": "AdventHealth Ocala", "type": "Hospital", "beds": 284, "city": "Ocala", "state": "FL",
+     "npi": "1234567898", "volume_weight": 0.04, "primary_clearinghouse": "change_healthcare"},
+    {"name": "AdventHealth Palm Coast", "type": "Hospital", "beds": 99, "city": "Palm Coast", "state": "FL",
+     "npi": "1234567899", "volume_weight": 0.02, "primary_clearinghouse": "availity"},
 ]
 
 # High-denial procedures for realistic AdventHealth demo
@@ -339,7 +362,7 @@ def seed_database():
     with Session(sync_engine) as session:
         print("Seeding dimension tables...")
         
-        # Seed Payers
+        # Seed Payers with clearinghouse routing
         payers = []
         for p in PAYERS:
             payer = DimPayer(
@@ -354,19 +377,26 @@ def seed_database():
                 top_denial_reason_1=random.choice(["50", "197", "16"]),
                 top_denial_reason_2=random.choice(["96", "29", "18"]),
                 top_denial_reason_3=random.choice(["45", "4", "22"]),
+                # Clearinghouse routing fields
+                clearinghouse=p.get("clearinghouse", "availity"),
+                avg_days_to_pay=p.get("avg_days_to_pay", 21),
+                base_denial_rate=p.get("denial_rate", 0.20),
+                base_yield=p.get("base_yield", 0.75),
+                top_denial_carc=p.get("top_denial_carc", "50"),
+                payer_volume_pct=p.get("volume_pct", 0.10),
             )
             session.add(payer)
             payers.append(payer)
         session.flush()
         print(f"  Created {len(payers)} payers")
         
-        # Seed Facilities
+        # Seed Facilities with NPIs and volume weights
         facilities = []
         for f in FACILITIES:
             facility = DimFacility(
                 facility_name=f["name"],
                 facility_type=f["type"],
-                npi=generate_npi(),
+                npi=f.get("npi", generate_npi()),
                 tax_id=f"{random.randint(10, 99)}-{random.randint(1000000, 9999999)}",
                 address_line1=f"{random.randint(100, 9999)} Healthcare Blvd",
                 city=f["city"],
@@ -375,6 +405,9 @@ def seed_database():
                 avg_denial_rate=random.uniform(0.12, 0.20),
                 avg_collection_rate=random.uniform(0.85, 0.95),
                 total_beds=f["beds"],
+                # Clearinghouse routing fields
+                volume_weight=f.get("volume_weight", 0.10),
+                primary_clearinghouse=f.get("primary_clearinghouse", "availity"),
             )
             session.add(facility)
             facilities.append(facility)
@@ -444,9 +477,9 @@ def seed_database():
         session.flush()
         print(f"  Created {len(physicians)} physicians")
         
-        # Seed Patients
+        # Seed Patients - scaled for AdventHealth's size (~55 hospitals)
         patients = []
-        for i in range(500):
+        for i in range(2000):
             payer = random.choice(payers)
             patient = DimPatient(
                 mrn=generate_mrn(),
@@ -478,7 +511,9 @@ def seed_database():
         
         print("\nSeeding fact tables...")
         
-        # Generate 1000 claims for a month of data
+        # Generate 5000 claims for a month of data - scaled for AdventHealth's volume
+        # AdventHealth has ~55 hospitals processing millions of claims annually
+        # 5000 claims represents approximately 1 week of denial-prone claims
         # Date range: November 2025 (one month of data)
         start_date = date(2025, 11, 1)
         end_date = date(2025, 11, 30)
@@ -523,7 +558,7 @@ def seed_database():
         # Store claim data for denial creation
         claims_to_deny = []
         
-        for i in range(1000):
+        for i in range(5000):
             patient = random.choice(patients)
             payer = patient.primary_payer
             facility = random.choice(facilities)
@@ -685,9 +720,9 @@ def seed_database():
         session.flush()
         print(f"  Created {len(denials)} denials ({len(denials)/len(claims)*100:.1f}% denial rate)")
         
-        # Create Prior Authorizations (for procedures that require PA)
+        # Create Prior Authorizations (for procedures that require PA) - scaled for AdventHealth
         pa_procedures = [p for p in procedures if p.pa_required]
-        for i in range(200):
+        for i in range(1000):
             patient = random.choice(patients)
             procedure = random.choice(pa_procedures)
             physician = random.choice(physicians)
@@ -772,7 +807,7 @@ def seed_database():
         ai_followed_total = 0
         ai_not_followed_total = 0
         
-        for i in range(500):  # Increased to 500 traces for better analytics
+        for i in range(2500):  # Scaled for AdventHealth's volume - 2500 traces for better analytics
             denial = random.choice(denials)
             
             # Staff follows AI recommendation ~65% of the time
