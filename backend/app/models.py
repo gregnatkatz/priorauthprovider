@@ -73,6 +73,14 @@ class DimPayer(Base):
     top_denial_reason_2 = Column(String(10))
     top_denial_reason_3 = Column(String(10))
     
+    # Clearinghouse routing (from Clearinghouse Addendum)
+    clearinghouse = Column(String(50))  # 'availity' or 'change_healthcare'
+    avg_days_to_pay = Column(Integer)  # Average days from submission to payment
+    base_denial_rate = Column(Float)  # Payer-specific denial rate
+    base_yield = Column(Float)  # Expected yield percentage
+    top_denial_carc = Column(String(10))  # Most common CARC code for this payer
+    payer_volume_pct = Column(Float)  # Percentage of total volume (e.g., 0.22 for FL Blue)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -99,6 +107,10 @@ class DimFacility(Base):
     avg_denial_rate = Column(Float)
     avg_collection_rate = Column(Float)
     total_beds = Column(Integer)
+    
+    # Clearinghouse routing (from Clearinghouse Addendum)
+    volume_weight = Column(Float)  # Percentage of total volume (e.g., 0.25 for Orlando flagship)
+    primary_clearinghouse = Column(String(50))  # 'availity' or 'change_healthcare'
     
     created_at = Column(DateTime, default=datetime.utcnow)
     

@@ -14,11 +14,11 @@ import {
   PieChart, Pie, Cell, Legend, LineChart, Line, Area, AreaChart, ComposedChart
 } from 'recharts'
 import { 
-  AlertCircle, TrendingUp, DollarSign, Clock, FileText, 
+  AlertCircle, TrendingUp, TrendingDown, DollarSign, Clock, FileText, 
   Brain, Activity, Search, ChevronLeft, ChevronRight, RefreshCw,
   Building2, Stethoscope, Shield, Zap, Moon, Sun, Users, Briefcase,
   X, Phone, FileUp, CheckCircle, AlertTriangle, Calendar,
-  Target, Clipboard, UserCheck, Timer, ThumbsUp, ThumbsDown
+  Target, Clipboard, UserCheck, Timer, ThumbsUp, ThumbsDown, ArrowRight
 } from 'lucide-react'
 
 type Persona = 'clinical' | 'admin' | 'executive'
@@ -48,7 +48,7 @@ const PERSONA_CONFIG = {
 }
 import './App.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 interface DashboardMetrics {
   total_claims: number
@@ -279,14 +279,16 @@ function App() {
     const agentStepIndexRef = useRef<number>(-1)
     const feedAgentIntervalRef = useRef<NodeJS.Timeout | null>(null)
     
-    // CFO Dashboard state
-    const [cfoKpis, setCfoKpis] = useState<any>(null)
-    const [churnWaterfall, setChurnWaterfall] = useState<any>(null)
-    const [cashForecast, setCashForecast] = useState<any>(null)
-    const [budgetVariance, setBudgetVariance] = useState<any>(null)
-    const [payerPerformance, setPayerPerformance] = useState<any>(null)
-    const [executiveSummary, setExecutiveSummary] = useState<any>(null)
+    // CFO Dashboard state (prefixed with _ to indicate intentionally unused - using static data for demo)
+    const [_cfoKpis, setCfoKpis] = useState<any>(null)
+    const [_churnWaterfall, setChurnWaterfall] = useState<any>(null)
+    const [_cashForecast, setCashForecast] = useState<any>(null)
+    const [_budgetVariance, setBudgetVariance] = useState<any>(null)
+    const [_payerPerformance, setPayerPerformance] = useState<any>(null)
+    const [_executiveSummary, setExecutiveSummary] = useState<any>(null)
     const [cfoLoading, setCfoLoading] = useState(false)
+    // Suppress unused variable warnings
+    void _cfoKpis; void _churnWaterfall; void _cashForecast; void _budgetVariance; void _payerPerformance; void _executiveSummary;
     // Scenario modeler state
     const [scenarioDenialRate, setScenarioDenialRate] = useState(18.5)
     const [scenarioAppealSuccess, setScenarioAppealSuccess] = useState(67)
@@ -3929,6 +3931,122 @@ function App() {
     </div>
   )
 
+  // CFO Dashboard KPI Card with sparkline
+  const CFOKPICard = ({ title, value, trend, trendValue, subtitle, alert, trendData }: {
+    title: string;
+    value: string;
+    trend?: 'up' | 'down' | 'flat';
+    trendValue?: string;
+    subtitle?: string;
+    alert?: boolean;
+    trendData?: { v: number }[];
+  }) => (
+    <Card className={`bg-gradient-to-br from-slate-900/60 to-slate-950/60 border ${alert ? 'border-red-500/50' : 'border-slate-800/80'}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-1">
+          <span className="text-xs font-medium text-slate-400">{title}</span>
+          {trend && trendValue && (
+            <div className={`flex items-center text-[11px] px-2 py-0.5 rounded-full ${
+              trend === 'up' ? 'bg-emerald-500/20 text-emerald-400' : 
+              trend === 'down' ? 'bg-red-500/20 text-red-400' : 
+              'bg-slate-600/50 text-slate-400'
+            }`}>
+              {trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : 
+               trend === 'down' ? <TrendingDown className="w-3 h-3 mr-1" /> : null}
+              {trendValue}
+            </div>
+          )}
+        </div>
+        <div className="flex items-end justify-between mt-2">
+          <div>
+            <span className={`text-2xl font-bold ${alert ? 'text-red-400' : 'text-white'}`}>{value}</span>
+            {subtitle && <p className="text-[11px] text-slate-500 mt-1">{subtitle}</p>}
+          </div>
+          {trendData && (
+            <div className="w-16 h-8">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <Line type="monotone" dataKey="v" stroke={trend === 'down' ? '#ef4444' : '#10b981'} strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Generate sparkline trend data
+  const generateSparkline = (direction: 'up' | 'down', variance = 0.1) => {
+    const base = direction === 'up' ? [3, 4, 3.5, 5, 4.5, 6, 5.5, 7] : [7, 6, 6.5, 5, 5.5, 4, 4.5, 3];
+    return base.map((v) => ({ v: v + (Math.random() - 0.5) * variance }));
+  };
+
+  // Static data for CFO Dashboard charts (matching reference design)
+  const cfoWaterfallData = [
+    { name: 'Submitted', value: 12400000, fill: '#3b82f6' },
+    { name: 'Contractual', value: -2100000, fill: '#64748b' },
+    { name: 'Denials', value: -890000, fill: '#ef4444' },
+    { name: 'Patient', value: -310000, fill: '#f59e0b' },
+    { name: 'Expected', value: 9100000, fill: '#10b981' },
+  ];
+
+  const cfoDenialTrendData = [
+    { month: 'Jul', rate: 22.1, predicted: null },
+    { month: 'Aug', rate: 21.3, predicted: null },
+    { month: 'Sep', rate: 20.8, predicted: null },
+    { month: 'Oct', rate: 19.6, predicted: null },
+    { month: 'Nov', rate: 18.9, predicted: null },
+    { month: 'Dec', rate: 18.5, predicted: 18.5 },
+    { month: 'Jan', rate: null, predicted: 17.8 },
+    { month: 'Feb', rate: null, predicted: 17.2 },
+    { month: 'Mar', rate: null, predicted: 16.5 },
+  ];
+
+  const cfoCashForecastData = [
+    { week: 'W1', expected: 2100, low: 1850, high: 2350, lastYear: 1950 },
+    { week: 'W2', expected: 2400, low: 2100, high: 2700, lastYear: 2200 },
+    { week: 'W3', expected: 2650, low: 2300, high: 3000, lastYear: 2400 },
+    { week: 'W4', expected: 2200, low: 1900, high: 2500, lastYear: 2100 },
+    { week: 'W5', expected: 2500, low: 2150, high: 2850, lastYear: 2300 },
+    { week: 'W6', expected: 2800, low: 2400, high: 3200, lastYear: 2500 },
+    { week: 'W7', expected: 2300, low: 1950, high: 2650, lastYear: 2150 },
+    { week: 'W8', expected: 2600, low: 2250, high: 2950, lastYear: 2400 },
+    { week: 'W9', expected: 2450, low: 2100, high: 2800, lastYear: 2250 },
+    { week: 'W10', expected: 2700, low: 2350, high: 3050, lastYear: 2500 },
+    { week: 'W11', expected: 2550, low: 2200, high: 2900, lastYear: 2350 },
+    { week: 'W12', expected: 2900, low: 2500, high: 3300, lastYear: 2600 },
+  ];
+
+  const cfoPayerTrendData = [
+    { payer: 'Medicare', current: 8, prev: 9, trend: 'improving' as const, forecast: 7.5 },
+    { payer: 'BCBS FL', current: 28, prev: 22, trend: 'worsening' as const, forecast: 31 },
+    { payer: 'United', current: 17, prev: 19, trend: 'improving' as const, forecast: 15 },
+    { payer: 'Aetna', current: 32, prev: 28, trend: 'worsening' as const, forecast: 35 },
+    { payer: 'Cigna', current: 21, prev: 21, trend: 'stable' as const, forecast: 21 },
+    { payer: 'Humana', current: 19, prev: 20, trend: 'improving' as const, forecast: 18 },
+  ];
+
+  const cfoBudgetData = [
+    { month: 'Dec 2025', budget: 10.2, forecast: 10.1, variance: -0.1, confidence: 94, status: 'on-track' as const },
+    { month: 'Jan 2026', budget: 9.8, forecast: 9.4, variance: -0.4, confidence: 87, status: 'monitor' as const },
+    { month: 'Feb 2026', budget: 10.5, forecast: 10.8, variance: 0.3, confidence: 82, status: 'on-track' as const },
+    { month: 'Mar 2026', budget: 11.2, forecast: 10.1, variance: -1.1, confidence: 75, status: 'at-risk' as const },
+  ];
+
+  const cfoHighRiskClaims = [
+    { id: 'CLM-10892', patient: 'Adams, R', payer: 'Aetna', amount: 12400, risk: 78, confidence: 92, factor: 'No prior auth', deadline: '24h', trend: 'Pattern: 94% denial rate for this procedure without PA' },
+    { id: 'CLM-10893', patient: 'Baker, S', payer: 'BCBS FL', amount: 8200, risk: 72, confidence: 87, factor: 'Missing H&P', deadline: '48h', trend: 'BCBS denial rate up 6% this month' },
+    { id: 'CLM-10901', patient: 'Clark, J', payer: 'United', amount: 5100, risk: 54, confidence: 81, factor: 'Coding review', deadline: '72h', trend: 'Similar claims denied 3x in last 30 days' },
+  ];
+
+  // Scenario modeler calculations
+  const baselineCollection = 40.4;
+  const denialImpact = (18.5 - scenarioDenialRate) * 0.56;
+  const appealImpact = (scenarioAppealSuccess - 67) * 0.08;
+  const projectedCollection = baselineCollection + denialImpact + appealImpact;
+  const annualImpact = (denialImpact + appealImpact) * 4;
+
   const renderCFODashboard = () => (
     <div className="space-y-6">
       {cfoLoading ? (
@@ -3939,285 +4057,478 @@ function App() {
       ) : (
         <>
           {/* Executive Summary Banner */}
-          {executiveSummary && (
-            <Card className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 border-blue-700/50">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-2">Executive Summary</h2>
-                    <p className="text-slate-300 max-w-3xl">{executiveSummary.narrative}</p>
-                  </div>
-                  <Badge variant="outline" className="text-blue-300 border-blue-500">
-                    {executiveSummary.period}
-                  </Badge>
-                </div>
-                {executiveSummary.key_actions && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {executiveSummary.key_actions.map((action: string, i: number) => (
-                      <Badge key={i} className="bg-blue-600/50">{action}</Badge>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* KPI Cards - 8 metrics */}
-          {cfoKpis && (
-            <div className="grid grid-cols-4 gap-4">
-              {cfoKpis.kpis?.map((kpi: any, i: number) => (
-                <Card key={i} className="bg-slate-800/50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">{kpi.name}</span>
-                      <Badge variant={kpi.trend === 'up' ? 'default' : kpi.trend === 'down' ? 'destructive' : 'secondary'} className="text-xs">
-                        {kpi.delta > 0 ? '+' : ''}{kpi.delta}%
-                      </Badge>
-                    </div>
-                    <div className="text-2xl font-bold text-white">
-                      {kpi.format === 'currency' ? formatCurrency(kpi.value) : 
-                       kpi.format === 'percent' ? `${(kpi.value * 100).toFixed(1)}%` : 
-                       kpi.value.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">{kpi.description}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Churn Waterfall Chart */}
-          {churnWaterfall && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Churn Waterfall - MTD
-                </CardTitle>
-                <CardDescription>From billed amount to expected collection</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={churnWaterfall.stages}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Bar dataKey="value" fill="#3b82f6">
-                        {churnWaterfall.stages?.map((entry: any, index: number) => (
-                          <Cell key={index} fill={entry.type === 'positive' ? '#22c55e' : entry.type === 'negative' ? '#ef4444' : '#3b82f6'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 grid grid-cols-4 gap-4 text-center">
-                  <div>
-                    <div className="text-sm text-slate-400">Billed</div>
-                    <div className="text-lg font-bold text-white">{formatCurrency(churnWaterfall.total_billed || 0)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-400">Contractual</div>
-                    <div className="text-lg font-bold text-red-400">-{formatCurrency(churnWaterfall.contractual_adj || 0)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-400">Denial Risk</div>
-                    <div className="text-lg font-bold text-orange-400">-{formatCurrency(churnWaterfall.denial_risk || 0)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-400">Expected</div>
-                    <div className="text-lg font-bold text-green-400">{formatCurrency(churnWaterfall.expected_collection || 0)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="grid grid-cols-2 gap-6">
-            {/* Cash Forecast */}
-            {cashForecast && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Cash Flow Forecast
-                  </CardTitle>
-                  <CardDescription>30-day collection projection</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={cashForecast.forecast}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                        <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                        <Area type="monotone" dataKey="expected" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="Expected" />
-                        <Area type="monotone" dataKey="optimistic" stroke="#22c55e" fill="#22c55e" fillOpacity={0.1} name="Optimistic" />
-                        <Area type="monotone" dataKey="pessimistic" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1} name="Pessimistic" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Budget Variance */}
-            {budgetVariance && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    Budget Variance
-                  </CardTitle>
-                  <CardDescription>Actual vs. budgeted collections</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={budgetVariance.months}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                        <YAxis tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                        <Legend />
-                        <Bar dataKey="actual" name="Actual" fill="#3b82f6" />
-                        <Bar dataKey="budget" name="Budget" fill="#94a3b8" />
-                        <Line type="monotone" dataKey="variance_pct" name="Variance %" stroke="#f59e0b" yAxisId="right" />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Scenario Modeler */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Scenario Modeler
-              </CardTitle>
-              <CardDescription>Adjust parameters to model financial impact</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-8">
+          <Card className="bg-gradient-to-r from-blue-900/50 via-indigo-900/50 to-slate-950/80 border-blue-700/50">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
                 <div>
-                  <label className="text-sm text-slate-400 mb-2 block">Denial Rate: {scenarioDenialRate.toFixed(1)}%</label>
-                  <input 
-                    type="range" 
-                    min="5" 
-                    max="35" 
-                    step="0.5"
-                    value={scenarioDenialRate}
-                    onChange={(e) => setScenarioDenialRate(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>5%</span>
-                    <span>Current: 18.5%</span>
-                    <span>35%</span>
-                  </div>
+                  <h2 className="text-xl font-bold text-white mb-2">Executive Summary</h2>
+                  <p className="text-slate-300 max-w-3xl">
+                    This month we've submitted $12.4M in claims with an expected collection of $10.1M (81.5% yield). 
+                    Our AI prediction accuracy remains strong. We've flagged 23 high-risk claims that need action this week.
+                  </p>
                 </div>
-                <div>
-                  <label className="text-sm text-slate-400 mb-2 block">Appeal Success Rate: {scenarioAppealSuccess}%</label>
-                  <input 
-                    type="range" 
-                    min="30" 
-                    max="90" 
-                    step="1"
-                    value={scenarioAppealSuccess}
-                    onChange={(e) => setScenarioAppealSuccess(parseInt(e.target.value))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>30%</span>
-                    <span>Current: 67%</span>
-                    <span>90%</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-sm text-slate-400">Projected Denials</div>
-                    <div className="text-xl font-bold text-orange-400">
-                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (scenarioDenialRate / 100))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-400">Recoverable via Appeals</div>
-                    <div className="text-xl font-bold text-green-400">
-                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (scenarioDenialRate / 100) * (scenarioAppealSuccess / 100))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-400">Net Collection Impact</div>
-                    <div className="text-xl font-bold text-blue-400">
-                      {formatCurrency((churnWaterfall?.total_billed || 12400000) * (1 - (scenarioDenialRate / 100) * (1 - scenarioAppealSuccess / 100)))}
-                    </div>
-                  </div>
+                <div className="flex items-center space-x-2 bg-red-500/20 px-3 py-1.5 rounded-lg border border-red-500/30">
+                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  <span className="text-sm text-red-400 font-medium">23 High-Risk Claims</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Payer Performance */}
-          {payerPerformance && (
-            <Card>
+          {/* 8 KPI Cards with Sparklines */}
+          <div className="grid grid-cols-4 gap-4">
+            <CFOKPICard 
+              title="Submitted (837s MTD)" 
+              value="$12.4M" 
+              trend="up" 
+              trendValue="+8.2%" 
+              subtitle="vs $11.5M last month"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Expected Collection" 
+              value="$10.1M" 
+              trend="up" 
+              trendValue="+6.1%" 
+              subtitle="81.5% predicted yield"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Churn Rate" 
+              value="18.5%" 
+              trend="up" 
+              trendValue="-2.1%" 
+              subtitle="Trending down from 22.1% in July"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Recoverable via Appeal" 
+              value="$1.8M" 
+              trend="up" 
+              trendValue="+12.4%" 
+              subtitle="67% success rate with AI"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Write-off Risk" 
+              value="$890K" 
+              trend="up" 
+              trendValue="-15.3%" 
+              subtitle="Down from $1.05M last month"
+              alert
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Days to Cash" 
+              value="42 days" 
+              trend="up" 
+              trendValue="-3 days" 
+              subtitle="Medicare: 28d, Commercial: 45d"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Forecast Accuracy" 
+              value="94.2%" 
+              trend="up" 
+              trendValue="+1.8%" 
+              subtitle="Based on last 90 days"
+              trendData={generateSparkline('up')}
+            />
+            <CFOKPICard 
+              title="Cash This Week" 
+              value="$2.1M" 
+              trend="up" 
+              trendValue="+4.2%" 
+              subtitle="87% confidence interval"
+              trendData={generateSparkline('up')}
+            />
+          </div>
+
+          {/* Row 1: Churn Waterfall + Denial Rate Trend */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Churn Waterfall */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Payer Performance - Churn Analysis
-                </CardTitle>
-                <CardDescription>Churn rate and collection efficiency by payer</CardDescription>
+                <CardTitle className="text-lg font-semibold text-white">Churn Waterfall - December 2025</CardTitle>
+                <CardDescription>From billed amount to expected collection</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Payer</TableHead>
-                      <TableHead>Billed MTD</TableHead>
-                      <TableHead>Expected Collection</TableHead>
-                      <TableHead>Churn Rate</TableHead>
-                      <TableHead>Denial Rate</TableHead>
-                      <TableHead>Avg Days to Pay</TableHead>
-                      <TableHead>Trend</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payerPerformance.payers?.map((payer: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{payer.name}</TableCell>
-                        <TableCell>{formatCurrency(payer.billed_mtd)}</TableCell>
-                        <TableCell>{formatCurrency(payer.expected_collection)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={payer.churn_rate * 100} className="w-16 h-2 [&>div]:bg-orange-500" />
-                            <span className="text-sm">{(payer.churn_rate * 100).toFixed(1)}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={payer.denial_rate * 100} className="w-16 h-2 [&>div]:bg-red-500" />
-                            <span className="text-sm">{(payer.denial_rate * 100).toFixed(1)}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{payer.avg_days_to_pay} days</TableCell>
-                        <TableCell>
-                          <Badge variant={payer.trend === 'improving' ? 'default' : payer.trend === 'declining' ? 'destructive' : 'secondary'}>
-                            {payer.trend}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={cfoWaterfallData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={true} vertical={false} />
+                      <XAxis 
+                        type="number" 
+                        tickFormatter={(v) => `$${Math.abs(v/1000000).toFixed(1)}M`} 
+                        stroke="#64748b"
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        width={80} 
+                        stroke="#64748b"
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      />
+                      <Tooltip 
+                        formatter={(v: number) => `$${Math.abs(v/1000000).toFixed(2)}M`}
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f1f5f9' }}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {cfoWaterfallData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center mt-4 space-x-4 text-xs">
+                  <span className="flex items-center text-slate-400"><span className="w-3 h-3 bg-blue-500 rounded mr-1.5"></span>Billed</span>
+                  <span className="flex items-center text-slate-400"><span className="w-3 h-3 bg-slate-500 rounded mr-1.5"></span>Contractual</span>
+                  <span className="flex items-center text-slate-400"><span className="w-3 h-3 bg-red-500 rounded mr-1.5"></span>Denials</span>
+                  <span className="flex items-center text-slate-400"><span className="w-3 h-3 bg-amber-500 rounded mr-1.5"></span>Patient</span>
+                  <span className="flex items-center text-slate-400"><span className="w-3 h-3 bg-emerald-500 rounded mr-1.5"></span>Expected</span>
+                </div>
               </CardContent>
             </Card>
-          )}
+
+            {/* Denial Rate Trend & Prediction */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-white">Denial Rate Trend & Prediction</CardTitle>
+                    <CardDescription>6-month history → 3-month forecast</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-emerald-500/20 px-2 py-1 rounded-lg">
+                    <TrendingDown className="w-3 h-3 text-emerald-400" />
+                    <span className="text-xs text-emerald-400">-3.6% projected</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={cfoDenialTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                      <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <YAxis 
+                        domain={[14, 24]} 
+                        tickFormatter={(v) => `${v}%`} 
+                        stroke="#64748b"
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f1f5f9' }}
+                        formatter={(v: number) => v ? `${v}%` : 'N/A'}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="rate" 
+                        stroke="#3b82f6" 
+                        strokeWidth={3} 
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        name="Actual"
+                        connectNulls={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="predicted" 
+                        stroke="#10b981" 
+                        strokeWidth={3} 
+                        strokeDasharray="8 4"
+                        dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                        name="Predicted"
+                        connectNulls={false}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center mt-2 space-x-6 text-xs">
+                  <span className="flex items-center text-slate-400">
+                    <span className="w-6 h-0.5 bg-blue-500 rounded mr-2"></span>Historical
+                  </span>
+                  <span className="flex items-center text-slate-400">
+                    <span className="w-6 h-0.5 bg-emerald-500 rounded mr-2"></span>AI Forecast
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 2: Cash Forecast + Payer Churn Trends */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* 90-Day Cash Forecast */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold text-white">90-Day Cash Forecast</CardTitle>
+                  <span className="text-xs text-slate-400 bg-slate-700/50 px-2 py-1 rounded">85% confidence</span>
+                </div>
+                <CardDescription>Expected: $29.4M | Range: $26.8M - $32.1M</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={cfoCashForecastData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                      <XAxis dataKey="week" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                      <YAxis tickFormatter={(v) => `$${v/1000}K`} stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                      <Tooltip 
+                        formatter={(v: number) => `$${(v * 1000).toLocaleString()}`}
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                      />
+                      <Area type="monotone" dataKey="high" stroke="transparent" fill="#3b82f6" fillOpacity={0.1} />
+                      <Area type="monotone" dataKey="low" stroke="transparent" fill="#0f172a" />
+                      <Line type="monotone" dataKey="lastYear" stroke="#64748b" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Last Year" />
+                      <Line type="monotone" dataKey="expected" stroke="#3b82f6" strokeWidth={3} dot={false} name="Forecast" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center mt-2 space-x-6 text-xs">
+                  <span className="flex items-center text-slate-400">
+                    <span className="w-6 h-0.5 bg-blue-500 rounded mr-2"></span>Forecast
+                  </span>
+                  <span className="flex items-center text-slate-400">
+                    <span className="w-6 h-0.5 bg-slate-500 rounded mr-2"></span>Last Year
+                  </span>
+                  <span className="flex items-center text-slate-400">
+                    <span className="w-4 h-3 bg-blue-500/20 rounded mr-2"></span>Confidence Band
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payer Churn Trends */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white">Payer Churn Trends</CardTitle>
+                <CardDescription>Churn rate and trend by payer</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {cfoPayerTrendData.map((payer) => (
+                    <div key={payer.payer} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-white font-medium w-24">{payer.payer}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-sm font-bold ${payer.current > 25 ? 'text-red-400' : payer.current > 15 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {payer.current}%
+                          </span>
+                          <span className="text-slate-500 text-xs">churn</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className={`flex items-center space-x-1 text-xs px-2 py-0.5 rounded-full ${
+                          payer.trend === 'improving' ? 'bg-emerald-500/20 text-emerald-400' :
+                          payer.trend === 'worsening' ? 'bg-red-500/20 text-red-400' :
+                          'bg-slate-600/50 text-slate-400'
+                        }`}>
+                          {payer.trend === 'improving' ? <TrendingDown className="w-3 h-3" /> :
+                           payer.trend === 'worsening' ? <TrendingUp className="w-3 h-3" /> :
+                           <span>→</span>}
+                          <span>{payer.trend}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400">Forecast: </span>
+                          <span className={`text-xs font-medium ${payer.forecast > payer.current ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {payer.forecast}%
+                          </span>
+                        </div>
+                        {payer.trend === 'worsening' && (
+                          <button className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium hover:bg-red-500/30 transition-colors">
+                            Action
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 3: Budget Variance + Scenario Modeler + High-Risk Claims */}
+          <div className="grid grid-cols-3 gap-6">
+            {/* Budget Variance */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white">Q1 Budget vs Trend Forecast</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {cfoBudgetData.map((row) => (
+                    <div key={row.month} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                      <div>
+                        <span className="text-white font-medium text-sm">{row.month}</span>
+                        <div className="text-xs text-slate-400">
+                          Budget: ${row.budget}M → Forecast: ${row.forecast}M
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-sm font-bold ${row.variance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {row.variance >= 0 ? '+' : ''}{row.variance}M
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          row.status === 'on-track' ? 'bg-emerald-500/20 text-emerald-400' :
+                          row.status === 'monitor' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {row.confidence}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between p-3 bg-slate-600/30 rounded-lg border border-slate-600/50">
+                    <div>
+                      <span className="text-white font-bold text-sm">Q1 Total</span>
+                      <div className="text-xs text-slate-400">$41.7M → $40.4M</div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-red-400 font-bold">-$1.3M</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
+                        84%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Scenario Modeler */}
+            <Card className="bg-slate-900/70 border-slate-800/80">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white">What-If Scenario</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm text-slate-300">Denial Rate</label>
+                      <span className="text-sm text-cyan-400 font-medium">{scenarioDenialRate.toFixed(1)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="25"
+                      step="0.5"
+                      value={scenarioDenialRate}
+                      onChange={(e) => setScenarioDenialRate(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>10%</span>
+                      <span>Current: 18.5%</span>
+                      <span>25%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm text-slate-300">Appeal Success</label>
+                      <span className="text-sm text-cyan-400 font-medium">{scenarioAppealSuccess}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="30"
+                      max="85"
+                      step="1"
+                      value={scenarioAppealSuccess}
+                      onChange={(e) => setScenarioAppealSuccess(parseInt(e.target.value))}
+                      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>30%</span>
+                      <span>Current: 67%</span>
+                      <span>85%</span>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl p-4 border border-cyan-500/20">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Q1 Impact</span>
+                        <span className={`font-bold ${projectedCollection > baselineCollection ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {projectedCollection > baselineCollection ? '+' : ''}${(projectedCollection - baselineCollection).toFixed(1)}M
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Annual Impact</span>
+                        <span className={`font-bold text-lg ${annualImpact > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {annualImpact > 0 ? '+' : ''}${annualImpact.toFixed(1)}M
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">ROI</span>
+                        <span className="font-bold text-cyan-400">{annualImpact > 0 ? Math.round(annualImpact / 0.25) : 0}x</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* High-Risk Claims */}
+            <Card className="bg-slate-900/70 border-red-500/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold text-white">High-Risk Claims</CardTitle>
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs font-medium animate-pulse">
+                    Action Required
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {cfoHighRiskClaims.map((claim) => (
+                    <div key={claim.id} className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-medium text-white text-sm">{claim.id}</span>
+                          <span className="text-slate-400 text-xs ml-2">{claim.patient}</span>
+                        </div>
+                        <span className="font-bold text-emerald-400">${claim.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs mb-2">
+                        <span className="text-slate-400">{claim.payer}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-red-400 font-medium">{claim.risk}% risk</span>
+                          <span className="text-slate-500">({claim.confidence}% conf)</span>
+                          <span className="text-amber-400 font-medium">{claim.deadline}</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-red-300 bg-red-500/10 px-2 py-1 rounded">
+                        {claim.trend}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="w-full mt-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium flex items-center justify-center transition-colors border border-red-500/30">
+                  View All 23 Claims <ArrowRight className="w-4 h-4 ml-2" />
+                </button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Insight Banner */}
+          <Card className="bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-indigo-500/20 border border-cyan-500/30">
+            <CardContent className="p-6">
+              <div className="flex items-start space-x-4">
+                <div className="p-3 bg-cyan-500/20 rounded-xl">
+                  <Zap className="w-6 h-6 text-cyan-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white text-lg mb-2">AI Trend Analysis & Prediction</h3>
+                  <p className="text-slate-300 text-sm leading-relaxed">
+                    <strong className="text-white">Based on 6-month trend analysis:</strong> Your denial rate has dropped from 22.1% to 18.5% (-3.6%). 
+                    AI predicts continued improvement to <strong className="text-emerald-400">16.5% by March</strong> if current interventions continue. 
+                    However, <strong className="text-red-400">BCBS Florida is trending negative</strong> (+6% denial rate) — the model detects 
+                    a policy change in their prior auth requirements. Recommend scheduling a payer meeting within 2 weeks.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

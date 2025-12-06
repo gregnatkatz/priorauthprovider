@@ -5,8 +5,9 @@ API Routes for Denial Management System
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime, timedelta
 import asyncio
+import random
 
 from app.database import get_db
 from app.services.data_service import create_data_service, SQLiteDataService
@@ -3101,4 +3102,243 @@ async def get_high_risk_claims(
         "total_at_risk": sum(c.get("predicted_churn", c.get("adjustment_amount", 0)) for c in high_risk_claims),
         "total_potential_save": sum(c.get("potential_save", 0) for c in high_risk_claims),
         "count": len(high_risk_claims)
+    }
+
+
+# ==================== CLEARINGHOUSE SIMULATION ====================
+# From Clearinghouse Addendum: Availity (FL Blue, Humana, Cigna, Medicare) and Optum/CHC (UHC, Aetna, Anthem, Medicaid)
+
+# Payer routing configuration
+AVAILITY_PAYERS = ["Florida Blue", "Humana", "Cigna", "Medicare", "Tricare"]
+CHANGE_HEALTHCARE_PAYERS = ["UnitedHealthcare", "Aetna", "Anthem Blue Cross", "Florida Medicaid", "Molina Healthcare"]
+
+# CARC code distribution by denial category (from Clearinghouse Addendum)
+CARC_DISTRIBUTION = {
+    "prior_auth": ["197", "198", "39"],  # 28% - Prior Auth denials
+    "medical_necessity": ["50", "55", "96"],  # 24% - Medical Necessity
+    "coding_billing": ["4", "5", "236"],  # 18% - Coding/Billing errors
+    "eligibility": ["27", "31", "32"],  # 12% - Eligibility issues
+    "duplicate": ["18"],  # 8% - Duplicate claims
+    "timely_filing": ["29"],  # 5% - Timely filing
+    "bundling": ["97", "234"],  # 5% - Bundling issues
+}
+
+
+@router.get("/clearinghouse/status")
+async def get_clearinghouse_status(db: AsyncSession = Depends(get_db)):
+    """
+    Get connection status for both clearinghouses (Availity and Change Healthcare).
+    In simulation mode, returns mock connection status.
+    """
+    import os
+    mode = os.getenv("CLEARINGHOUSE_MODE", "simulation")
+    
+    return {
+        "mode": mode,
+        "availity": {
+            "name": "Availity",
+            "status": "connected" if mode == "simulation" else "disconnected",
+            "payers": AVAILITY_PAYERS,
+            "connection_type": "SFTP" if mode == "production" else "Simulation",
+            "last_poll": datetime.now().isoformat(),
+            "files_pending": random.randint(0, 5) if mode == "simulation" else 0,
+        },
+        "change_healthcare": {
+            "name": "Change Healthcare (Optum)",
+            "status": "connected" if mode == "simulation" else "disconnected",
+            "payers": CHANGE_HEALTHCARE_PAYERS,
+            "connection_type": "REST API" if mode == "production" else "Simulation",
+            "last_poll": datetime.now().isoformat(),
+            "files_pending": random.randint(0, 3) if mode == "simulation" else 0,
+        },
+        "note": "Simulation mode generates realistic 835 traffic based on AdventHealth's payer mix"
+    }
+
+
+@router.post("/clearinghouse/availity/poll")
+async def poll_availity(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simulate polling Availity SFTP for new 835 remittance files.
+    Generates realistic denials for FL Blue, Humana, Cigna, Medicare payers.
+    """
+    from app.services.feed_generator import generate_feed_data
+    from sqlalchemy import text
+    
+    # Get Availity payers from database
+    query = text("SELECT payer_id, payer_name FROM dim_payer WHERE clearinghouse = 'availity' OR payer_name IN :payers")
+    result = await db.execute(query, {"payers": tuple(AVAILITY_PAYERS)})
+    payers = result.fetchall()
+    
+    if not payers:
+        # Fallback to any payers if clearinghouse field not set
+        query = text("SELECT payer_id, payer_name FROM dim_payer LIMIT 5")
+        result = await db.execute(query)
+        payers = result.fetchall()
+    
+    # Generate 835 data for Availity payers
+    claims_generated = 0
+    denials_generated = 0
+    
+    for payer_id, payer_name in payers:
+        # Generate feed data for this payer
+        feed_data = await generate_feed_data(db, source="availity", payer_filter=payer_id)
+        claims_generated += feed_data.get("claims_count", 0)
+        denials_generated += feed_data.get("denials_count", 0)
+    
+    # Trigger AI analysis in background
+    background_tasks.add_task(process_feed_ai_background, db, "availity")
+    
+    return {
+        "clearinghouse": "availity",
+        "status": "success",
+        "files_processed": random.randint(1, 3),
+        "claims_ingested": claims_generated,
+        "denials_found": denials_generated,
+        "payers_included": [p[1] for p in payers],
+        "timestamp": datetime.now().isoformat(),
+        "ai_analysis": "triggered"
+    }
+
+
+@router.post("/clearinghouse/change/poll")
+async def poll_change_healthcare(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simulate polling Change Healthcare (Optum) API for new 835 remittance data.
+    Generates realistic denials for UHC, Aetna, Anthem, Medicaid payers.
+    """
+    from app.services.feed_generator import generate_feed_data
+    from sqlalchemy import text
+    
+    # Get Change Healthcare payers from database
+    query = text("SELECT payer_id, payer_name FROM dim_payer WHERE clearinghouse = 'change_healthcare' OR payer_name IN :payers")
+    result = await db.execute(query, {"payers": tuple(CHANGE_HEALTHCARE_PAYERS)})
+    payers = result.fetchall()
+    
+    if not payers:
+        # Fallback to any payers if clearinghouse field not set
+        query = text("SELECT payer_id, payer_name FROM dim_payer LIMIT 5")
+        result = await db.execute(query)
+        payers = result.fetchall()
+    
+    # Generate 835 data for Change Healthcare payers
+    claims_generated = 0
+    denials_generated = 0
+    
+    for payer_id, payer_name in payers:
+        # Generate feed data for this payer
+        feed_data = await generate_feed_data(db, source="change_healthcare", payer_filter=payer_id)
+        claims_generated += feed_data.get("claims_count", 0)
+        denials_generated += feed_data.get("denials_count", 0)
+    
+    # Trigger AI analysis in background
+    background_tasks.add_task(process_feed_ai_background, db, "change_healthcare")
+    
+    return {
+        "clearinghouse": "change_healthcare",
+        "status": "success",
+        "api_calls": random.randint(2, 5),
+        "claims_ingested": claims_generated,
+        "denials_found": denials_generated,
+        "payers_included": [p[1] for p in payers],
+        "timestamp": datetime.now().isoformat(),
+        "ai_analysis": "triggered"
+    }
+
+
+@router.post("/clearinghouse/simulate/batch")
+async def simulate_batch_traffic(
+    days: int = Query(7, ge=1, le=30, description="Number of days to simulate"),
+    background_tasks: BackgroundTasks = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate N days of synthetic clearinghouse traffic.
+    Simulates realistic 837 submissions and 835 responses based on AdventHealth's payer mix.
+    
+    Daily volume: 500-800 837 submissions, 400-700 835 responses (lagged 3-14 days)
+    """
+    from app.services.feed_generator import generate_feed_data
+    
+    total_claims = 0
+    total_denials = 0
+    daily_stats = []
+    
+    for day in range(days):
+        day_date = datetime.now() - timedelta(days=days - day - 1)
+        
+        # Simulate daily volume (500-800 claims per day)
+        daily_claims = random.randint(500, 800)
+        daily_denials = int(daily_claims * random.uniform(0.15, 0.25))  # 15-25% denial rate
+        
+        # Generate feed data
+        feed_data = await generate_feed_data(db, source="batch_simulation")
+        
+        total_claims += feed_data.get("claims_count", daily_claims)
+        total_denials += feed_data.get("denials_count", daily_denials)
+        
+        daily_stats.append({
+            "date": day_date.strftime("%Y-%m-%d"),
+            "claims_submitted": daily_claims,
+            "denials_received": daily_denials,
+            "denial_rate": round(daily_denials / daily_claims * 100, 1)
+        })
+    
+    return {
+        "simulation_complete": True,
+        "days_simulated": days,
+        "total_claims": total_claims,
+        "total_denials": total_denials,
+        "overall_denial_rate": round(total_denials / total_claims * 100, 1) if total_claims > 0 else 0,
+        "daily_breakdown": daily_stats,
+        "clearinghouse_split": {
+            "availity": int(total_claims * 0.58),  # FL Blue + Humana + Cigna + Medicare = 58%
+            "change_healthcare": int(total_claims * 0.42)  # UHC + Aetna + Anthem + Medicaid = 42%
+        },
+        "note": "Simulated traffic based on AdventHealth's payer mix and denial patterns"
+    }
+
+
+@router.post("/clearinghouse/submit/837")
+async def submit_837_claim(
+    claim_type: str = Query("837P", regex="^837[PI]$", description="837P (Professional) or 837I (Institutional)"),
+    payer_name: str = Query(..., description="Payer name for routing"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simulate submitting an 837 claim to the appropriate clearinghouse.
+    Routes to Availity or Change Healthcare based on payer.
+    """
+    from sqlalchemy import text
+    
+    # Determine clearinghouse based on payer
+    clearinghouse = "availity" if payer_name in AVAILITY_PAYERS else "change_healthcare"
+    
+    # Get payer from database
+    query = text("SELECT payer_id, payer_name, avg_days_to_pay FROM dim_payer WHERE payer_name = :name")
+    result = await db.execute(query, {"name": payer_name})
+    payer = result.fetchone()
+    
+    if not payer:
+        raise HTTPException(status_code=404, detail=f"Payer '{payer_name}' not found")
+    
+    # Simulate submission
+    submission_id = f"SUB-{random.randint(100000, 999999)}"
+    expected_response_days = payer[2] if payer[2] else random.randint(14, 30)
+    
+    return {
+        "submission_id": submission_id,
+        "claim_type": claim_type,
+        "payer": payer_name,
+        "clearinghouse": clearinghouse,
+        "status": "accepted",
+        "submitted_at": datetime.now().isoformat(),
+        "expected_response_date": (datetime.now() + timedelta(days=expected_response_days)).strftime("%Y-%m-%d"),
+        "tracking_number": f"TRK-{clearinghouse.upper()[:3]}-{random.randint(10000, 99999)}",
+        "note": f"Claim routed to {clearinghouse.replace('_', ' ').title()} for {payer_name}"
     }
