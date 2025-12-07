@@ -2353,6 +2353,41 @@ function App() {
                       <FileUp className="h-4 w-4 mr-1" />
                       Notify Rev Cycle to File Appeal
                     </Button>
+
+                    {/* Status Intelligence - Case Nurse Reconciliation */}
+                    <div className="text-xs text-slate-400 uppercase font-semibold mt-3 mb-1">AI Status Intelligence</div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 bg-cyan-900/30 rounded border border-cyan-500/30">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-cyan-400" />
+                          <div>
+                            <div className="text-xs font-medium text-white">COB Resolution</div>
+                            <div className="text-xs text-slate-400">Coordination of Benefits analysis</div>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs text-cyan-400 border-cyan-400/50">STS-006</Badge>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-amber-900/30 rounded border border-amber-500/30">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-400" />
+                          <div>
+                            <div className="text-xs font-medium text-white">Claim Risk Alert</div>
+                            <div className="text-xs text-slate-400">Pending claim denial risk scoring</div>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs text-amber-400 border-amber-400/50">STS-003</Badge>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-red-900/30 rounded border border-red-500/30">
+                        <div className="flex items-center gap-2">
+                          <Activity className="h-4 w-4 text-red-400" />
+                          <div>
+                            <div className="text-xs font-medium text-white">Stuck Claims</div>
+                            <div className="text-xs text-slate-400">Detects unusual status flow patterns</div>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs text-red-400 border-red-400/50">STS-007</Badge>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
