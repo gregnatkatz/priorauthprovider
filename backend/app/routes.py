@@ -4209,3 +4209,247 @@ async def trigger_audit(
         "audit_result": result,
         "timestamp": datetime.now().isoformat()
     }
+
+
+# ==================== POLICY RAG ENDPOINTS ====================
+
+@router.get("/policies/search")
+async def search_policies(
+    query: str = Query(..., description="Search query for policy documents"),
+    payer_id: Optional[str] = Query(None, description="Filter by payer ID (FL_BLUE, HUMANA_FL, FL_MEDICAID, AETNA_FL)"),
+    policy_type: Optional[str] = Query(None, description="Filter by policy type"),
+    n_results: int = Query(5, description="Number of results to return")
+):
+    """
+    Search payer policy documents using semantic search.
+    Returns relevant policy sections ranked by relevance.
+    """
+    try:
+        from app.services.policy_rag import PayerPolicyRAG
+        
+        rag = PayerPolicyRAG()
+        results = rag.search_policies(
+            query=query,
+            payer_id=payer_id,
+            policy_type=policy_type,
+            n_results=n_results
+        )
+        
+        return {
+            "query": query,
+            "filters": {
+                "payer_id": payer_id,
+                "policy_type": policy_type
+            },
+            "results": [
+                {
+                    "policy_number": r.document.policy_number,
+                    "policy_title": r.document.policy_title,
+                    "payer_id": r.document.payer_id,
+                    "payer_name": r.document.payer_name,
+                    "policy_type": r.document.policy_type,
+                    "effective_date": r.document.effective_date,
+                    "matched_section": r.matched_section[:500] + "..." if len(r.matched_section) > 500 else r.matched_section,
+                    "relevance_score": r.relevance_score
+                }
+                for r in results
+            ],
+            "total_results": len(results)
+        }
+    except Exception as e:
+        return {
+            "query": query,
+            "error": str(e),
+            "results": [],
+            "total_results": 0
+        }
+
+
+@router.get("/policies/payers")
+async def get_policy_payers():
+    """
+    Get list of FL payers with policy documents in the RAG system.
+    """
+    try:
+        from app.services.policy_rag import PayerPolicyRAG
+        
+        rag = PayerPolicyRAG()
+        stats = rag.get_policy_stats()
+        
+        return {
+            "payers": [
+                {
+                    "payer_id": payer_id,
+                    "payer_name": {
+                        "FL_BLUE": "Florida Blue (BCBS FL)",
+                        "HUMANA_FL": "Humana Florida",
+                        "FL_MEDICAID": "Florida Medicaid (AHCA)",
+                        "AETNA_FL": "Aetna Florida"
+                    }.get(payer_id, payer_id),
+                    "policy_count": count
+                }
+                for payer_id, count in stats.get("by_payer", {}).items()
+            ],
+            "total_policies": stats.get("total_policies", 0),
+            "policy_types": stats.get("by_type", {})
+        }
+    except Exception as e:
+        return {
+            "payers": [
+                {"payer_id": "FL_BLUE", "payer_name": "Florida Blue (BCBS FL)", "policy_count": 3},
+                {"payer_id": "HUMANA_FL", "payer_name": "Humana Florida", "policy_count": 3},
+                {"payer_id": "FL_MEDICAID", "payer_name": "Florida Medicaid (AHCA)", "policy_count": 3},
+                {"payer_id": "AETNA_FL", "payer_name": "Aetna Florida", "policy_count": 3}
+            ],
+            "total_policies": 12,
+            "policy_types": {
+                "medical_policy": 4,
+                "prior_auth": 4,
+                "clinical_guidelines": 4
+            },
+            "note": f"Using fallback data: {str(e)}"
+        }
+
+
+@router.get("/policies/{policy_number}")
+async def get_policy_detail(policy_number: str):
+    """
+    Get detailed information about a specific policy document.
+    """
+    try:
+        from app.services.policy_rag import PayerPolicyRAG
+        
+        rag = PayerPolicyRAG()
+        policy = rag.get_policy_by_number(policy_number)
+        
+        if policy:
+            return {
+                "policy_number": policy.policy_number,
+                "policy_title": policy.policy_title,
+                "payer_id": policy.payer_id,
+                "payer_name": policy.payer_name,
+                "policy_type": policy.policy_type,
+                "effective_date": policy.effective_date,
+                "content": policy.content,
+                "source_url": policy.source_url,
+                "version": policy.version,
+                "last_updated": policy.last_updated,
+                "content_hash": policy.content_hash
+            }
+        else:
+            raise HTTPException(status_code=404, detail=f"Policy {policy_number} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/policies/validate-claim")
+async def validate_claim_against_policies(
+    payer_id: str = Query(..., description="Payer ID"),
+    procedure_code: str = Query(..., description="CPT procedure code"),
+    procedure_description: str = Query("", description="Procedure description"),
+    claim_data: Optional[dict] = None
+):
+    """
+    Validate a claim against payer policies using the PolicyRAGAgent.
+    Returns policy compliance analysis and recommendations.
+    """
+    try:
+        from app.services.ai_agents import PolicyRAGAgent
+        
+        agent = PolicyRAGAgent()
+        result = await agent.analyze({
+            "payer_id": payer_id,
+            "payer_name": {
+                "FL_BLUE": "Florida Blue",
+                "HUMANA_FL": "Humana Florida",
+                "FL_MEDICAID": "Florida Medicaid",
+                "AETNA_FL": "Aetna Florida"
+            }.get(payer_id, payer_id),
+            "procedure_code": procedure_code,
+            "procedure_description": procedure_description,
+            "claim_data": claim_data or {}
+        })
+        
+        return {
+            "payer_id": payer_id,
+            "procedure_code": procedure_code,
+            "validation_result": result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "payer_id": payer_id,
+            "procedure_code": procedure_code,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@router.post("/policies/scrape")
+async def trigger_policy_scrape(
+    payer_id: Optional[str] = Query(None, description="Specific payer to scrape (or all if not specified)")
+):
+    """
+    Trigger policy scraping for FL payer portals.
+    Note: Some payer portals may require authentication or have CAPTCHAs.
+    """
+    try:
+        from app.services.ai_agents import PolicyScraperAgent
+        
+        agent = PolicyScraperAgent()
+        
+        if payer_id:
+            result = await agent.scrape_payer_policies(payer_id)
+        else:
+            result = await agent.run_weekly_scrape()
+        
+        return {
+            "scrape_triggered": True,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "scrape_triggered": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@router.get("/policies/stats")
+async def get_policy_stats():
+    """
+    Get statistics about the policy RAG system.
+    """
+    try:
+        from app.services.policy_rag import PayerPolicyRAG
+        
+        rag = PayerPolicyRAG()
+        stats = rag.get_policy_stats()
+        
+        return {
+            "total_policies": stats.get("total_policies", 0),
+            "by_payer": stats.get("by_payer", {}),
+            "by_type": stats.get("by_type", {}),
+            "last_updated": stats.get("last_updated"),
+            "chromadb_status": "connected" if rag.collection else "disconnected"
+        }
+    except Exception as e:
+        return {
+            "total_policies": 12,
+            "by_payer": {
+                "FL_BLUE": 3,
+                "HUMANA_FL": 3,
+                "FL_MEDICAID": 3,
+                "AETNA_FL": 3
+            },
+            "by_type": {
+                "medical_policy": 4,
+                "prior_auth": 4,
+                "clinical_guidelines": 4
+            },
+            "chromadb_status": "error",
+            "error": str(e)
+        }

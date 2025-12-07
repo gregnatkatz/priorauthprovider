@@ -43,6 +43,12 @@ backend/.env
 
 # SQLite database
 *.db
+*.db-shm
+*.db-wal
+
+# ChromaDB vector store
+chroma_db/
+backend/chroma_db/
 
 # IDE
 .idea/

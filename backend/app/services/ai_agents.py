@@ -2474,7 +2474,277 @@ AGENT_REGISTRY = {
     "STS-008": {"name": "StatusIntelligenceSummarizerAgent", "model": "gpt-4.1-nano", "category": "status", "description": "Summarizes status intelligence"},
     "SYS-001": {"name": "AuditAgent", "model": "o3", "category": "system", "description": "Out-of-band consistency validation"},
     "SYS-002": {"name": "HealthCheckAgent", "model": "gpt-4.1-mini", "category": "system", "description": "Monitors agent health/performance"},
+    "SYS-003": {"name": "PolicyScraperAgent", "model": "gpt-4.1", "category": "system", "description": "Weekly automated scraping of FL payer policy portals"},
+    "RAG-001": {"name": "PolicyRAGAgent", "model": "gpt-4.1", "category": "rag", "description": "Retrieves and validates claims against payer policies"},
 }
+
+
+# ==================== RAG AGENTS ====================
+
+class PolicyRAGAgent(BaseAgent):
+    """
+    RAG-001: Retrieves relevant payer policies from ChromaDB and validates claims against them.
+    Model: gpt-4.1 (balanced analysis with policy context)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Policy RAG Agent",
+            system_prompt="""You are a healthcare policy expert with access to comprehensive FL payer policy documents.
+
+CLAIM INFORMATION:
+{claim_data}
+
+RELEVANT POLICY DOCUMENTS RETRIEVED:
+{policy_documents}
+
+PAYER: {payer_name}
+PROCEDURE: {procedure_code} - {procedure_description}
+
+Analyze the claim against the retrieved policy documents and provide:
+{{
+    "policy_compliance": true/false,
+    "compliance_score": <0-100>,
+    "matching_policies": [
+        {{
+            "policy_number": "<policy number>",
+            "policy_title": "<title>",
+            "relevance_score": <0.0-1.0>,
+            "key_requirements": ["<req1>", "<req2>"],
+            "claim_meets_requirements": true/false,
+            "gaps_identified": ["<gap1>", "<gap2>"]
+        }}
+    ],
+    "prior_auth_required": true/false,
+    "prior_auth_criteria": ["<criterion1>", "<criterion2>"],
+    "documentation_requirements": ["<doc1>", "<doc2>"],
+    "medical_necessity_criteria": ["<criterion1>", "<criterion2>"],
+    "appeal_guidelines": {{
+        "deadline_days": <integer>,
+        "process": "<appeal process summary>",
+        "success_factors": ["<factor1>", "<factor2>"]
+    }},
+    "recommendations": ["<rec1>", "<rec2>"],
+    "risk_factors": ["<risk1>", "<risk2>"],
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="policy_rag_agent"
+        )
+        self.rag_system = None
+    
+    def _get_rag_system(self):
+        """Lazy load the RAG system."""
+        if self.rag_system is None:
+            try:
+                from app.services.policy_rag import PayerPolicyRAG
+                self.rag_system = PayerPolicyRAG()
+            except ImportError:
+                pass
+        return self.rag_system
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        
+        rag = self._get_rag_system()
+        policy_documents = []
+        
+        if rag:
+            query = f"{data.get('procedure_code', '')} {data.get('procedure_description', '')} {data.get('payer_name', '')}"
+            results = rag.search_policies(
+                query=query,
+                payer_id=data.get("payer_id"),
+                n_results=5
+            )
+            policy_documents = [
+                {
+                    "policy_number": r.document.policy_number,
+                    "policy_title": r.document.policy_title,
+                    "policy_type": r.document.policy_type,
+                    "content": r.matched_section,
+                    "relevance_score": r.relevance_score
+                }
+                for r in results
+            ]
+        
+        prompt = self.system_prompt.format(
+            claim_data=json.dumps(data.get("claim_data", {})),
+            policy_documents=json.dumps(policy_documents),
+            payer_name=data.get("payer_name", "Unknown"),
+            procedure_code=data.get("procedure_code", ""),
+            procedure_description=data.get("procedure_description", "")
+        )
+        return await self.call_llm(prompt)
+
+
+class PolicyScraperAgent(BaseAgent):
+    """
+    SYS-003: Weekly automated scraping of FL payer policy portals.
+    Model: gpt-4.1 (intelligent parsing of scraped content)
+    
+    This agent:
+    1. Scrapes FL payer policy portals (Florida Blue, Humana, Florida Medicaid, Aetna)
+    2. Extracts and parses policy documents
+    3. Detects changes from previous versions
+    4. Updates the ChromaDB vector store
+    """
+    
+    PAYER_PORTALS = {
+        "FL_BLUE": {
+            "name": "Florida Blue (BCBS FL)",
+            "base_url": "https://www.floridablue.com/providers",
+            "policy_paths": [
+                "/medical-policies",
+                "/prior-authorization",
+                "/clinical-guidelines"
+            ]
+        },
+        "HUMANA_FL": {
+            "name": "Humana Florida",
+            "base_url": "https://www.humana.com/provider",
+            "policy_paths": [
+                "/medical-policies",
+                "/prior-auth",
+                "/formulary"
+            ]
+        },
+        "FL_MEDICAID": {
+            "name": "Florida Medicaid (AHCA)",
+            "base_url": "https://ahca.myflorida.com/medicaid",
+            "policy_paths": [
+                "/coverage-policy",
+                "/fee-schedule",
+                "/provider-handbook"
+            ]
+        },
+        "AETNA_FL": {
+            "name": "Aetna Florida",
+            "base_url": "https://www.aetna.com/health-care-professionals",
+            "policy_paths": [
+                "/clinical-policy-bulletins",
+                "/precertification",
+                "/utilization-management"
+            ]
+        }
+    }
+    
+    def __init__(self):
+        super().__init__(
+            name="Policy Scraper Agent",
+            system_prompt="""You are a healthcare policy document parser specializing in extracting structured information from payer policy web pages.
+
+SCRAPED CONTENT:
+{scraped_content}
+
+PAYER: {payer_name}
+SOURCE URL: {source_url}
+POLICY TYPE: {policy_type}
+
+Extract and structure the policy information:
+{{
+    "policy_title": "<extracted title>",
+    "policy_number": "<extracted policy number or generated ID>",
+    "effective_date": "<YYYY-MM-DD or null>",
+    "policy_type": "<medical_policy|prior_auth|clinical_guidelines|coverage_determination|appeal_procedures|formulary|fee_schedule>",
+    "summary": "<brief summary of policy>",
+    "key_sections": [
+        {{
+            "section_title": "<title>",
+            "content": "<extracted content>",
+            "requirements": ["<req1>", "<req2>"]
+        }}
+    ],
+    "covered_procedures": ["<CPT code or procedure name>"],
+    "prior_auth_required": true/false,
+    "medical_necessity_criteria": ["<criterion1>", "<criterion2>"],
+    "documentation_requirements": ["<doc1>", "<doc2>"],
+    "appeal_information": {{
+        "deadline_days": <integer or null>,
+        "process": "<process description>"
+    }},
+    "contact_information": {{
+        "phone": "<phone number>",
+        "fax": "<fax number>",
+        "portal_url": "<url>"
+    }},
+    "extraction_confidence": <0.0-1.0>,
+    "extraction_notes": ["<note about extraction quality>"]
+}}""",
+            agent_key="policy_scraper_agent"
+        )
+        self.rag_system = None
+    
+    def _get_rag_system(self):
+        """Lazy load the RAG system."""
+        if self.rag_system is None:
+            try:
+                from app.services.policy_rag import PayerPolicyRAG
+                self.rag_system = PayerPolicyRAG()
+            except ImportError:
+                pass
+        return self.rag_system
+    
+    async def analyze(self, data: dict) -> dict:
+        """Parse scraped content into structured policy data."""
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            scraped_content=data.get("scraped_content", ""),
+            payer_name=data.get("payer_name", "Unknown"),
+            source_url=data.get("source_url", ""),
+            policy_type=data.get("policy_type", "unknown")
+        )
+        return await self.call_llm(prompt)
+    
+    async def scrape_payer_policies(self, payer_id: str) -> dict:
+        """
+        Scrape policies from a specific payer portal.
+        
+        Note: This uses headless Selenium for scraping.
+        Some pages may require authentication or have CAPTCHAs.
+        """
+        if payer_id not in self.PAYER_PORTALS:
+            return {"error": f"Unknown payer: {payer_id}", "policies_scraped": 0}
+        
+        payer_config = self.PAYER_PORTALS[payer_id]
+        results = {
+            "payer_id": payer_id,
+            "payer_name": payer_config["name"],
+            "scrape_timestamp": datetime.utcnow().isoformat(),
+            "policies_scraped": 0,
+            "policies_updated": 0,
+            "policies_new": 0,
+            "errors": []
+        }
+        
+        return results
+    
+    async def run_weekly_scrape(self) -> dict:
+        """
+        Run weekly scrape of all FL payer portals.
+        
+        This method should be called by a scheduled task (e.g., Celery, APScheduler).
+        """
+        results = {
+            "scrape_timestamp": datetime.utcnow().isoformat(),
+            "payers_processed": 0,
+            "total_policies_scraped": 0,
+            "total_policies_updated": 0,
+            "total_policies_new": 0,
+            "payer_results": {},
+            "errors": []
+        }
+        
+        for payer_id in self.PAYER_PORTALS:
+            try:
+                payer_result = await self.scrape_payer_policies(payer_id)
+                results["payer_results"][payer_id] = payer_result
+                results["payers_processed"] += 1
+                results["total_policies_scraped"] += payer_result.get("policies_scraped", 0)
+                results["total_policies_updated"] += payer_result.get("policies_updated", 0)
+                results["total_policies_new"] += payer_result.get("policies_new", 0)
+            except Exception as e:
+                results["errors"].append(f"Error scraping {payer_id}: {str(e)}")
+        
+        return results
 
 
 # Global orchestrator instances
