@@ -76,9 +76,9 @@ Real-time tracking of claims at risk of denial with AI-predicted risk scores and
 **Reconciliation Status:**
 Track matched, unmatched, and partially matched claims between 837 submissions and 835 remittances.
 
-### 30 AI Agents (18 Specialist + 12 Churn/CFO)
+### 40 AI Agents (18 Denial + 12 CFO + 8 Status + 2 System)
 
-The platform uses 30 AI agents with diversified Azure OpenAI models for comprehensive analysis, financial forecasting, and multi-model verification.
+The platform uses 40 AI agents with diversified Azure OpenAI models for comprehensive analysis, financial forecasting, status intelligence, and multi-model verification.
 
 **18 Denial Management Agents:**
 
@@ -119,6 +119,26 @@ The platform uses 30 AI agents with diversified Azure OpenAI models for comprehe
 | Forecast Accuracy Tracker | gpt-4.1-nano | Monitors prediction accuracy |
 | Executive Summary Generator | o3 | Generates executive briefings |
 | Trend Anomaly Detector | DeepSeek-V3 | Detects unusual patterns |
+
+**8 Status Intelligence Agents (277/277CA Processing):**
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| Front-End Rejection Analyzer | o3 | Analyzes 277CA front-end rejections |
+| Appeal Deadline Risk Assessor | o3 | Prioritizes appeals by deadline risk |
+| Pending Claim Risk Scorer | gpt-4.1 | Scores denial risk for pending claims |
+| Aging Trend Forecaster | gpt-4.1 | Forecasts A/R aging trends |
+| Payer SLA Monitor | gpt-4.1-mini | Monitors payer SLA compliance |
+| COB Coordination Analyzer | gpt-4.1-mini | Analyzes COB coordination issues |
+| Status Pattern Detector | DeepSeek-V3 | Detects status flow anomalies |
+| Status Intelligence Summarizer | gpt-4.1-nano | Summarizes status intelligence |
+
+**2 System Agents (Audit & Health):**
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| Audit Agent | o3 | Out-of-band consistency validation |
+| Health Check Agent | gpt-4.1-mini | Monitors agent health/performance |
 
 ### High-Denial CPT Codes (ContosoHealth Focus)
 
@@ -199,6 +219,18 @@ Denial remittance with CARC code CO-197 (Precertification/authorization/notifica
 
 **835 Partial Denial** (`samples/edi/sample_835_partial_denial.txt`):
 Partial payment with some line items denied, demonstrating mixed adjudication scenarios.
+
+**277CA Accepted** (`samples/edi/sample_277CA_accepted.txt`):
+Claim acknowledgment showing successful front-end acceptance (A1 status) for processing.
+
+**277CA Rejected** (`samples/edi/sample_277CA_rejected.txt`):
+Claim acknowledgment showing front-end rejection (A3 status) with rejection reason T15 (Missing/invalid prior authorization).
+
+**277 Pending** (`samples/edi/sample_277_pending.txt`):
+Claim status response showing pending adjudication (A7 status) with payer claim control number.
+
+**277 Finalized** (`samples/edi/sample_277_finalized.txt`):
+Claim status response showing finalized processing (A8 status) with payment issued and check reference.
 
 ## Architecture
 

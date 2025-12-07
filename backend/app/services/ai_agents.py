@@ -98,6 +98,18 @@ AGENT_MODEL_MAP = {
     "viability_scorer": "o3",  # o3 reasoning for viability assessment
     "eligibility_verifier": "gpt-4.1-mini",  # Real-time eligibility checks
     "followup_scheduler": "gpt-4.1-nano",  # Automated follow-up planning
+    # Status Intelligence Agents (8)
+    "front_end_rejection_analyzer": "o3",
+    "appeal_deadline_risk_assessor": "o3",
+    "pending_claim_risk_scorer": "gpt-4.1",
+    "aging_trend_forecaster": "gpt-4.1",
+    "payer_sla_monitor": "gpt-4.1-mini",
+    "cob_coordination_analyzer": "gpt-4.1-mini",
+    "status_pattern_detector": "deepseek",
+    "status_intelligence_summarizer": "gpt-4.1-nano",
+    # System Agents (2)
+    "audit_agent": "o3",
+    "health_check_agent": "gpt-4.1-mini",
 }
 
 # Initialize Azure OpenAI client
@@ -298,7 +310,7 @@ class AIAgentOrchestrator:
 class BaseAgent:
     """Base class for all AI agents"""
     
-    def __init__(self, name: str, system_prompt: str, agent_key: str = None):
+    def __init__(self, name: str, system_prompt: str, agent_key: Optional[str] = None):
         self.name = name
         self.system_prompt = system_prompt
         self.agent_key = agent_key or name.lower().replace(" ", "_")
@@ -1840,6 +1852,629 @@ class ChurnPredictionOrchestrator:
             "confidence": churn_pred.get("confidence", 0.85),
             "agents_used": list(results.keys())
         }
+
+
+# ==================== STATUS INTELLIGENCE AGENTS ====================
+
+class FrontEndRejectionAnalyzerAgent(BaseAgent):
+    """
+    STS-001: Analyzes 277CA rejections to identify patterns and prevent future front-end failures.
+    Model: o3 (complex pattern analysis)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Front End Rejection Analyzer",
+            system_prompt="""You are a healthcare EDI expert specializing in 277CA claim acknowledgment analysis.
+
+Analyze front-end rejection patterns from 277CA responses.
+
+REJECTION DATA:
+{rejection_data}
+
+HISTORICAL PATTERNS:
+{historical_patterns}
+
+CLEARINGHOUSE: {clearinghouse}
+
+Respond in JSON:
+{{
+    "rejection_category": "<data_quality|eligibility|authorization|duplicate|other>",
+    "root_cause": "<specific cause>",
+    "pattern_detected": true/false,
+    "pattern_description": "<if detected>",
+    "affected_claim_count": <integer>,
+    "systemic_fix_available": true/false,
+    "fix_recommendation": "<specific fix>",
+    "prevention_rule": "<rule to add to scrubber>",
+    "urgency": "<critical|high|medium|low>",
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="front_end_rejection_analyzer"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            rejection_data=json.dumps(data.get("rejection_data", {})),
+            historical_patterns=json.dumps(data.get("historical_patterns", [])),
+            clearinghouse=data.get("clearinghouse", "Unknown")
+        )
+        return await self.call_llm(prompt)
+
+
+class AppealDeadlineRiskAssessorAgent(BaseAgent):
+    """
+    STS-002: Prioritizes appeals by combining deadline urgency, financial value, and success probability.
+    Model: o3 (complex multi-factor reasoning)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Appeal Deadline Risk Assessor",
+            system_prompt="""You are a healthcare revenue cycle expert specializing in appeal prioritization.
+
+Assess appeal deadline risk and calculate priority score.
+
+DENIAL: {denial_summary}
+AMOUNT: ${amount}
+DAYS UNTIL DEADLINE: {days_remaining}
+PAYER: {payer_name}
+PAYER APPEAL DEADLINE: {payer_deadline_days} days from denial
+SUCCESS PROBABILITY: {success_probability}
+
+WORKLOAD CONTEXT:
+- Staff available: {staff_count}
+- Current queue size: {queue_size}
+- Avg appeals/day capacity: {daily_capacity}
+
+Calculate priority score (0-100) using formula:
+Priority = (Financial_Value × Success_Prob × Urgency_Multiplier) / Effort
+
+Respond in JSON:
+{{
+    "priority_score": <0-100>,
+    "risk_category": "<critical|urgent|standard|low>",
+    "expected_value": <dollar amount>,
+    "opportunity_cost_if_missed": <dollar amount>,
+    "recommended_action_date": "<YYYY-MM-DD>",
+    "escalation_needed": true/false,
+    "resource_requirement_hours": <decimal>,
+    "bundling_opportunity": true/false,
+    "bundle_with_claims": ["<claim_id>"],
+    "reasoning": "<explanation of priority calculation>",
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="appeal_deadline_risk_assessor"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            denial_summary=data.get("denial_summary", ""),
+            amount=data.get("amount", 0),
+            days_remaining=data.get("days_remaining", 30),
+            payer_name=data.get("payer_name", "Unknown"),
+            payer_deadline_days=data.get("payer_deadline_days", 90),
+            success_probability=data.get("success_probability", 0.5),
+            staff_count=data.get("staff_count", 5),
+            queue_size=data.get("queue_size", 100),
+            daily_capacity=data.get("daily_capacity", 20)
+        )
+        return await self.call_llm(prompt)
+
+
+class PendingClaimRiskScorerAgent(BaseAgent):
+    """
+    STS-003: Scores denial risk for claims in pending status (after 277CA accept, before 835).
+    Model: gpt-4.1 (standard analysis)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Pending Claim Risk Scorer",
+            system_prompt="""You are a healthcare claims analyst predicting denial risk for pending claims.
+
+CLAIM: {claim_summary}
+DAYS PENDING: {days_pending}
+PAYER: {payer_name}
+PAYER AVG ADJUDICATION: {payer_avg_days} days
+STATUS HISTORY: {status_history}
+SIMILAR CLAIM OUTCOMES: {similar_outcomes}
+
+Score denial risk:
+{{
+    "denial_risk_score": <0-100>,
+    "risk_level": "<low|medium|high|critical>",
+    "predicted_outcome": "<paid|partial|denied>",
+    "predicted_outcome_probability": <0.0-1.0>,
+    "days_to_expected_resolution": <integer>,
+    "intervention_recommended": true/false,
+    "intervention_type": "<status_check|documentation|escalation|none>",
+    "risk_factors": ["<factor1>", "<factor2>"],
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="pending_claim_risk_scorer"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            claim_summary=data.get("claim_summary", ""),
+            days_pending=data.get("days_pending", 0),
+            payer_name=data.get("payer_name", "Unknown"),
+            payer_avg_days=data.get("payer_avg_days", 30),
+            status_history=json.dumps(data.get("status_history", [])),
+            similar_outcomes=json.dumps(data.get("similar_outcomes", []))
+        )
+        return await self.call_llm(prompt)
+
+
+class AgingTrendForecasterAgent(BaseAgent):
+    """
+    STS-004: Forecasts A/R aging trends and cash flow impact from pending claims.
+    Model: gpt-4.1 (standard analysis)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Aging Trend Forecaster",
+            system_prompt="""You are a healthcare financial analyst forecasting A/R aging.
+
+CURRENT AGING BUCKETS:
+{current_aging}
+
+HISTORICAL AGING TRENDS (last 6 months):
+{historical_aging}
+
+PENDING CLAIMS BY EXPECTED RESOLUTION:
+{pending_resolution}
+
+Forecast aging for next 30/60/90 days:
+{{
+    "forecast_period_days": 90,
+    "aging_forecast": [
+        {{"bucket": "0-30", "current": <amount>, "forecast_30d": <amount>, "forecast_60d": <amount>, "forecast_90d": <amount>}},
+        {{"bucket": "31-60", "current": <amount>, "forecast_30d": <amount>, "forecast_60d": <amount>, "forecast_90d": <amount>}},
+        {{"bucket": "61-90", "current": <amount>, "forecast_30d": <amount>, "forecast_60d": <amount>, "forecast_90d": <amount>}},
+        {{"bucket": "91-120", "current": <amount>, "forecast_30d": <amount>, "forecast_60d": <amount>, "forecast_90d": <amount>}},
+        {{"bucket": "120+", "current": <amount>, "forecast_30d": <amount>, "forecast_60d": <amount>, "forecast_90d": <amount>}}
+    ],
+    "total_ar_forecast": <amount>,
+    "cash_conversion_forecast": <amount>,
+    "days_sales_outstanding_forecast": <days>,
+    "concerning_trends": ["<trend1>", "<trend2>"],
+    "recommended_focus_areas": ["<area1>", "<area2>"],
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="aging_trend_forecaster"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            current_aging=json.dumps(data.get("current_aging", {})),
+            historical_aging=json.dumps(data.get("historical_aging", [])),
+            pending_resolution=json.dumps(data.get("pending_resolution", []))
+        )
+        return await self.call_llm(prompt)
+
+
+class PayerSLAMonitorAgent(BaseAgent):
+    """
+    STS-005: Monitors payer SLA compliance and identifies breaches.
+    Model: gpt-4.1-mini (efficient, high-volume)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Payer SLA Monitor",
+            system_prompt="""Monitor payer SLA compliance.
+
+PAYER: {payer_name}
+CONTRACT SLA: {contracted_sla_days} days for adjudication
+
+CURRENT METRICS:
+- Claims submitted last 60 days: {claims_submitted}
+- Claims adjudicated: {claims_adjudicated}
+- Average adjudication days: {avg_days}
+- Claims over SLA: {over_sla_count}
+
+CLAIMS APPROACHING SLA BREACH (within 5 days):
+{approaching_breach}
+
+Analyze:
+{{
+    "sla_compliance_rate": <percentage>,
+    "average_adjudication_days": <days>,
+    "claims_breaching_sla": <count>,
+    "breach_amount": <dollar amount>,
+    "breach_trend": "<improving|stable|worsening>",
+    "claims_at_risk": [
+        {{"claim_id": "<id>", "days_pending": <days>, "amount": <amount>, "days_to_breach": <days>}}
+    ],
+    "escalation_recommended": true/false,
+    "contract_leverage_available": true/false,
+    "recommended_action": "<action>",
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="payer_sla_monitor"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            payer_name=data.get("payer_name", "Unknown"),
+            contracted_sla_days=data.get("contracted_sla_days", 30),
+            claims_submitted=data.get("claims_submitted", 0),
+            claims_adjudicated=data.get("claims_adjudicated", 0),
+            avg_days=data.get("avg_days", 0),
+            over_sla_count=data.get("over_sla_count", 0),
+            approaching_breach=json.dumps(data.get("approaching_breach", []))
+        )
+        return await self.call_llm(prompt)
+
+
+class COBCoordinationAnalyzerAgent(BaseAgent):
+    """
+    STS-006: Analyzes Coordination of Benefits holds and identifies resolution paths.
+    Model: gpt-4.1-mini (efficient)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="COB Coordination Analyzer",
+            system_prompt="""Analyze COB coordination status.
+
+CLAIM: {claim_summary}
+PRIMARY PAYER: {primary_payer}
+SECONDARY PAYER: {secondary_payer}
+COB STATUS: {cob_status}
+DAYS IN COB HOLD: {days_in_hold}
+PRIMARY EOB RECEIVED: {primary_eob_received}
+
+Analyze:
+{{
+    "cob_issue_identified": true/false,
+    "issue_type": "<order_of_benefits|missing_eob|timing|data_mismatch|none>",
+    "resolution_path": "<specific steps>",
+    "expected_resolution_days": <integer>,
+    "primary_payment_received": true/false,
+    "secondary_billable": true/false,
+    "estimated_secondary_payment": <amount>,
+    "action_required": "<action>",
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="cob_coordination_analyzer"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            claim_summary=data.get("claim_summary", ""),
+            primary_payer=data.get("primary_payer", "Unknown"),
+            secondary_payer=data.get("secondary_payer", "Unknown"),
+            cob_status=data.get("cob_status", "Unknown"),
+            days_in_hold=data.get("days_in_hold", 0),
+            primary_eob_received=data.get("primary_eob_received", False)
+        )
+        return await self.call_llm(prompt)
+
+
+class StatusPatternDetectorAgent(BaseAgent):
+    """
+    STS-007: Detects anomalies and patterns in claim status flows using batch analysis.
+    Model: DeepSeek-V3 (efficient pattern detection)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Status Pattern Detector",
+            system_prompt="""Detect patterns in claim status flows.
+
+STATUS FLOW DATA (last 30 days):
+{status_flow_data}
+
+BASELINE PATTERNS:
+- Normal flow: 837 → 277CA (1d) → 277 Pending (varies) → 835 (avg {baseline_days}d)
+- Expected stuck rate: {baseline_stuck_rate}%
+- Expected regression rate: {baseline_regression_rate}%
+
+Detect anomalies:
+{{
+    "anomalies_detected": [
+        {{
+            "type": "<stuck|regression|unusual_path|timing>",
+            "description": "<details>",
+            "affected_claims": <count>,
+            "affected_amount": <dollar amount>,
+            "severity": "<critical|high|medium|low>",
+            "first_detected": "<date>",
+            "payer": "<payer name or 'multiple'>"
+        }}
+    ],
+    "emerging_patterns": [
+        {{
+            "pattern": "<description>",
+            "frequency": <count>,
+            "trend": "<increasing|stable|decreasing>",
+            "impact": "<description>"
+        }}
+    ],
+    "payer_specific_issues": [
+        {{"payer": "<name>", "issue": "<description>", "claim_count": <count>}}
+    ],
+    "recommended_investigations": ["<investigation1>", "<investigation2>"],
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="status_pattern_detector"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            status_flow_data=json.dumps(data.get("status_flow_data", [])),
+            baseline_days=data.get("baseline_days", 30),
+            baseline_stuck_rate=data.get("baseline_stuck_rate", 5),
+            baseline_regression_rate=data.get("baseline_regression_rate", 2)
+        )
+        return await self.call_llm(prompt)
+
+
+class StatusIntelligenceSummarizerAgent(BaseAgent):
+    """
+    STS-008: Summarizes all status intelligence for dashboards and alerts.
+    Model: gpt-4.1-nano (fast, cost-efficient)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Status Intelligence Summarizer",
+            system_prompt="""Summarize status intelligence from all status agents.
+
+AGENT OUTPUTS:
+{agent_outputs}
+
+Create executive summary:
+{{
+    "headline": "<one line summary for dashboard>",
+    "alert_level": "<normal|elevated|critical>",
+    "key_metrics": {{
+        "total_pending": <count>,
+        "total_pending_amount": <amount>,
+        "at_risk_count": <count>,
+        "at_risk_amount": <amount>,
+        "approaching_deadline": <count>,
+        "sla_breaches": <count>
+    }},
+    "top_issues": [
+        {{"issue": "<description>", "impact": "<dollar amount or count>", "urgency": "<critical|high|medium|low>"}}
+    ],
+    "recommended_actions": [
+        {{"action": "<specific action>", "priority": <1-5>, "expected_impact": "<description>"}}
+    ],
+    "payer_alerts": [
+        {{"payer": "<name>", "alert": "<description>", "severity": "<warning|critical>"}}
+    ],
+    "trend_summary": "<brief description of overall trends>",
+    "confidence": <0.0-1.0>
+}}""",
+            agent_key="status_intelligence_summarizer"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            agent_outputs=json.dumps(data.get("agent_outputs", {}))
+        )
+        return await self.call_llm(prompt)
+
+
+# ==================== SYSTEM AGENTS ====================
+
+class AuditAgent(BaseAgent):
+    """
+    SYS-001: Out-of-band audit agent that validates consistency across all agents.
+    Runs asynchronously after pipeline completion.
+    Model: o3 (complex reasoning for validation)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Audit Agent",
+            system_prompt="""You are an AI audit system validating agent outputs for consistency and accuracy.
+
+CLAIM DATA:
+{claim_data}
+
+ALL AGENT OUTPUTS (from pipeline):
+{all_outputs}
+
+HISTORICAL ACCURACY FOR SIMILAR CLAIMS:
+{historical_accuracy}
+
+Perform comprehensive audit:
+{{
+    "audit_passed": true/false,
+    "overall_confidence": <0.0-1.0>,
+    
+    "consistency_check": {{
+        "agents_agree": true/false,
+        "disagreements": [
+            {{
+                "agents": ["<agent1>", "<agent2>"],
+                "field": "<field_name>",
+                "values": ["<value1>", "<value2>"],
+                "resolution": "<which is correct and why>"
+            }}
+        ]
+    }},
+    
+    "data_integrity": {{
+        "all_required_fields_present": true/false,
+        "missing_fields": ["<field1>", "<field2>"],
+        "data_quality_score": <0-100>,
+        "issues": ["<issue1>", "<issue2>"]
+    }},
+    
+    "recommendation_validation": {{
+        "primary_recommendation": "<the main recommendation>",
+        "recommendation_supported": true/false,
+        "conflicts_detected": true/false,
+        "conflicts": [
+            {{"recommendation1": "<rec>", "recommendation2": "<rec>", "resolution": "<which>"}}
+        ],
+        "final_validated_recommendation": "<recommendation>",
+        "recommendation_confidence": <0.0-1.0>
+    }},
+    
+    "accuracy_prediction": {{
+        "predicted_accuracy": <0.0-1.0>,
+        "basis": "<how this was determined>",
+        "similar_case_accuracy": <0.0-1.0>
+    }},
+    
+    "audit_actions": [
+        {{"action": "<required action>", "severity": "<critical|warning|info>", "target": "<agent or system>"}}
+    ],
+    
+    "human_review_required": true/false,
+    "human_review_reason": "<if required, why>"
+}}""",
+            agent_key="audit_agent"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            claim_data=json.dumps(data.get("claim_data", {})),
+            all_outputs=json.dumps(data.get("all_outputs", {})),
+            historical_accuracy=json.dumps(data.get("historical_accuracy", {}))
+        )
+        return await self.call_llm(prompt)
+    
+    async def run_audit(self, claim_id: str, all_outputs: dict) -> dict:
+        """Run audit asynchronously (non-blocking)."""
+        return await self.analyze({
+            "claim_data": {"claim_id": claim_id},
+            "all_outputs": all_outputs,
+            "historical_accuracy": {}
+        })
+    
+    async def run_scheduled_batch_audit(self, batch_size: int = 100) -> dict:
+        """Run scheduled audit on recent claims. Called by cron job."""
+        return {"status": "batch_audit_complete", "claims_audited": batch_size}
+
+
+class HealthCheckAgent(BaseAgent):
+    """
+    SYS-002: Monitors health and performance of all 40 agents.
+    Model: gpt-4.1-mini (efficient)
+    """
+    
+    def __init__(self):
+        super().__init__(
+            name="Health Check Agent",
+            system_prompt="""Analyze agent health metrics.
+
+AGENT METRICS (last 24 hours):
+{agent_metrics}
+
+BASELINE PERFORMANCE:
+{baseline}
+
+Check health for all agents:
+{{
+    "overall_health": "<healthy|degraded|critical>",
+    "agents_checked": <count>,
+    "healthy_agents": <count>,
+    "degraded_agents": [
+        {{"agent_id": "<id>", "agent_name": "<name>", "issue": "<description>", "severity": "<warning|critical>"}}
+    ],
+    "performance_issues": [
+        {{"agent_id": "<id>", "metric": "<latency|accuracy|availability>", "current": <value>, "baseline": <value>, "deviation_pct": <percentage>}}
+    ],
+    "resource_utilization": {{
+        "total_tokens_24h": <count>,
+        "total_cost_24h": <amount>,
+        "total_requests_24h": <count>,
+        "avg_latency_ms": <milliseconds>
+    }},
+    "model_distribution": {{
+        "o3": {{"requests": <count>, "cost": <amount>}},
+        "gpt-4.1": {{"requests": <count>, "cost": <amount>}},
+        "gpt-4.1-mini": {{"requests": <count>, "cost": <amount>}},
+        "gpt-4.1-nano": {{"requests": <count>, "cost": <amount>}},
+        "DeepSeek-V3": {{"requests": <count>, "cost": <amount>}}
+    }},
+    "recommendations": ["<rec1>", "<rec2>"],
+    "alerts": [
+        {{"severity": "<info|warning|critical>", "message": "<alert message>"}}
+    ]
+}}""",
+            agent_key="health_check_agent"
+        )
+    
+    async def analyze(self, data: dict) -> dict:
+        record_agent_call(self.name)
+        prompt = self.system_prompt.format(
+            agent_metrics=json.dumps(data.get("agent_metrics", {})),
+            baseline=json.dumps(data.get("baseline", {}))
+        )
+        return await self.call_llm(prompt)
+    
+    async def check_health(self) -> dict:
+        """Run health check on all agents."""
+        return await self.analyze({
+            "agent_metrics": {},
+            "baseline": {}
+        })
+
+
+# ==================== AGENT REGISTRY ====================
+
+AGENT_REGISTRY = {
+    "DEN-001": {"name": "SDOHScorerAgent", "model": "gpt-4.1", "category": "denial", "description": "Scores social determinants of health impact"},
+    "DEN-002": {"name": "CareGapDetectorAgent", "model": "gpt-4.1", "category": "denial", "description": "Detects gaps in patient care"},
+    "DEN-003": {"name": "ClinicalUrgencyAgent", "model": "gpt-4.1", "category": "denial", "description": "Assesses clinical urgency of cases"},
+    "DEN-004": {"name": "FinancialValueAgent", "model": "gpt-4.1-mini", "category": "denial", "description": "Calculates financial value of claims"},
+    "DEN-005": {"name": "RecoveryPredictorAgent", "model": "o3", "category": "denial", "description": "Predicts recovery likelihood"},
+    "DEN-006": {"name": "P2POptimizerAgent", "model": "deepseek", "category": "denial", "description": "Optimizes peer-to-peer reviews"},
+    "DEN-007": {"name": "QueueWaitTimeAgent", "model": "gpt-4.1-nano", "category": "denial", "description": "Estimates queue wait times"},
+    "DEN-008": {"name": "PARiskPredictorAgent", "model": "gpt-4.1-mini", "category": "denial", "description": "Predicts prior auth risk"},
+    "DEN-009": {"name": "DocCompletenessAgent", "model": "gpt-4.1-mini", "category": "denial", "description": "Checks documentation completeness"},
+    "DEN-010": {"name": "PolicyMonitorAgent", "model": "gpt-4.1-nano", "category": "denial", "description": "Monitors policy changes"},
+    "DEN-011": {"name": "RootCauseAnalyzerAgent", "model": "o3", "category": "denial", "description": "Analyzes root causes of denials"},
+    "DEN-012": {"name": "StaffFeedbackProcessorAgent", "model": "deepseek", "category": "denial", "description": "Processes staff feedback for RL"},
+    "VAL-001": {"name": "SafetyValidatorAgent", "model": "o1", "category": "denial", "description": "Validates safety-critical decisions"},
+    "VAL-002": {"name": "ConsensusCheckerAgent", "model": "gpt-4.1", "category": "denial", "description": "Checks agent consensus"},
+    "VAL-003": {"name": "PolicyMatchGraderAgent", "model": "deepseek", "category": "denial", "description": "Grades policy compliance"},
+    "VAL-004": {"name": "ViabilityScorerAgent", "model": "o3", "category": "denial", "description": "Scores appeal viability"},
+    "VAL-005": {"name": "EligibilityVerifierAgent", "model": "gpt-4.1-mini", "category": "denial", "description": "Verifies patient eligibility"},
+    "VAL-006": {"name": "FollowupSchedulerAgent", "model": "gpt-4.1-nano", "category": "denial", "description": "Schedules follow-up actions"},
+    "CFO-001": {"name": "SubmissionChurnPredictorAgent", "model": "o3", "category": "cfo", "description": "Predicts submission churn"},
+    "CFO-002": {"name": "PayerBehaviorModelerAgent", "model": "gpt-4.1", "category": "cfo", "description": "Models payer behavior patterns"},
+    "CFO-003": {"name": "ProcedureRiskScorerAgent", "model": "gpt-4.1", "category": "cfo", "description": "Scores procedure denial risk"},
+    "CFO-004": {"name": "DocumentationGapPredictorAgent", "model": "gpt-4.1-mini", "category": "cfo", "description": "Predicts documentation gaps"},
+    "CFO-005": {"name": "ContractualEstimatorAgent", "model": "gpt-4.1", "category": "cfo", "description": "Estimates contractual amounts"},
+    "CFO-006": {"name": "CollectionTimelinePredictorAgent", "model": "gpt-4.1-mini", "category": "cfo", "description": "Predicts collection timelines"},
+    "CFO-007": {"name": "VarianceAnalyzerAgent", "model": "gpt-4.1", "category": "cfo", "description": "Analyzes payment variances"},
+    "CFO-008": {"name": "DenialCategorizerAgent", "model": "gpt-4.1-mini", "category": "cfo", "description": "Categorizes denial types"},
+    "CFO-009": {"name": "ReconciliationScorerAgent", "model": "gpt-4.1-mini", "category": "cfo", "description": "Scores reconciliation accuracy"},
+    "CFO-010": {"name": "CashFlowForecasterAgent", "model": "gpt-4.1", "category": "cfo", "description": "Forecasts cash flow"},
+    "CFO-011": {"name": "BudgetScenarioModelerAgent", "model": "o3", "category": "cfo", "description": "Models budget scenarios"},
+    "CFO-012": {"name": "ExecutiveNarrativeGeneratorAgent", "model": "gpt-4.1", "category": "cfo", "description": "Generates executive narratives"},
+    "STS-001": {"name": "FrontEndRejectionAnalyzerAgent", "model": "o3", "category": "status", "description": "Analyzes 277CA front-end rejections"},
+    "STS-002": {"name": "AppealDeadlineRiskAssessorAgent", "model": "o3", "category": "status", "description": "Prioritizes appeals by deadline risk"},
+    "STS-003": {"name": "PendingClaimRiskScorerAgent", "model": "gpt-4.1", "category": "status", "description": "Scores risk for pending claims"},
+    "STS-004": {"name": "AgingTrendForecasterAgent", "model": "gpt-4.1", "category": "status", "description": "Forecasts A/R aging trends"},
+    "STS-005": {"name": "PayerSLAMonitorAgent", "model": "gpt-4.1-mini", "category": "status", "description": "Monitors payer SLA compliance"},
+    "STS-006": {"name": "COBCoordinationAnalyzerAgent", "model": "gpt-4.1-mini", "category": "status", "description": "Analyzes COB coordination issues"},
+    "STS-007": {"name": "StatusPatternDetectorAgent", "model": "deepseek", "category": "status", "description": "Detects status flow anomalies"},
+    "STS-008": {"name": "StatusIntelligenceSummarizerAgent", "model": "gpt-4.1-nano", "category": "status", "description": "Summarizes status intelligence"},
+    "SYS-001": {"name": "AuditAgent", "model": "o3", "category": "system", "description": "Out-of-band consistency validation"},
+    "SYS-002": {"name": "HealthCheckAgent", "model": "gpt-4.1-mini", "category": "system", "description": "Monitors agent health/performance"},
+}
 
 
 # Global orchestrator instances

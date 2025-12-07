@@ -898,3 +898,150 @@ class IngestionSource(Base):
     last_sync_at = Column(DateTime)
     records_today = Column(Integer, default=0)
     error_rate = Column(Float, default=0)
+
+
+# ==================== STATUS INTELLIGENCE TABLES ====================
+
+class ClaimStatus277(Base):
+    """Tracks 277/277CA status updates for claims."""
+    __tablename__ = "claim_status_277"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    claim_id = Column(String(50), ForeignKey("fact_claim.claim_id"), index=True)
+    transaction_type = Column(String(10))  # '277CA' or '277'
+    status_category_code = Column(String(5))  # A0-A8
+    status_category_description = Column(String(200))
+    status_code = Column(String(10))
+    status_description = Column(String(500))
+    rejection_reason_code = Column(String(10), nullable=True)
+    rejection_reason_description = Column(String(500), nullable=True)
+    payer_claim_control_number = Column(String(50), nullable=True)
+    effective_date = Column(DateTime)
+    received_date = Column(DateTime, default=datetime.utcnow)
+    raw_edi_segment = Column(Text, nullable=True)
+    ai_analyzed = Column(Boolean, default=False)
+    ai_analysis_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ClaimAgingBucket(Base):
+    """Daily snapshot of claim aging for trend analysis."""
+    __tablename__ = "claim_aging_bucket"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_date = Column(Date, nullable=False, index=True)
+    payer_id = Column(Integer, ForeignKey("dim_payer.payer_id"), nullable=True)
+    bucket_0_30_count = Column(Integer, default=0)
+    bucket_0_30_amount = Column(Float, default=0)
+    bucket_31_60_count = Column(Integer, default=0)
+    bucket_31_60_amount = Column(Float, default=0)
+    bucket_61_90_count = Column(Integer, default=0)
+    bucket_61_90_amount = Column(Float, default=0)
+    bucket_91_120_count = Column(Integer, default=0)
+    bucket_91_120_amount = Column(Float, default=0)
+    bucket_120_plus_count = Column(Integer, default=0)
+    bucket_120_plus_amount = Column(Float, default=0)
+    total_ar_amount = Column(Float, default=0)
+    days_sales_outstanding = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AppealDeadlineRisk(Base):
+    """Tracks appeal deadlines with AI-calculated priority scores."""
+    __tablename__ = "appeal_deadline_risk"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    denial_id = Column(Integer, ForeignKey("fact_denial.denial_id"), index=True)
+    claim_id = Column(String(50), index=True)
+    payer_id = Column(Integer, ForeignKey("dim_payer.payer_id"))
+    denial_date = Column(Date, nullable=False)
+    appeal_deadline = Column(Date, nullable=False)
+    days_remaining = Column(Integer)
+    denied_amount = Column(Float)
+    priority_score = Column(Float)  # 0-100, AI-calculated
+    risk_category = Column(String(20))  # 'critical', 'urgent', 'standard', 'low'
+    success_probability = Column(Float)  # 0-1
+    expected_value = Column(Float)  # denied_amount * success_probability
+    resource_hours_estimate = Column(Float)
+    bundle_with_claims = Column(Text, nullable=True)  # JSON array of claim IDs
+    ai_reasoning = Column(Text, nullable=True)
+    last_calculated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PayerSLA(Base):
+    """Reference table for payer SLA configurations."""
+    __tablename__ = "payer_sla"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    payer_id = Column(Integer, ForeignKey("dim_payer.payer_id"), unique=True)
+    payer_name = Column(String(200))
+    adjudication_sla_days = Column(Integer, default=30)  # Days to adjudicate clean claims
+    appeal_deadline_days = Column(Integer, default=90)  # Days to file appeal from denial
+    reconsideration_deadline_days = Column(Integer, nullable=True)
+    corrected_claim_deadline_days = Column(Integer, nullable=True)
+    timely_filing_days = Column(Integer, default=365)
+    electronic_submission_required = Column(Boolean, default=True)
+    contract_effective_date = Column(Date, nullable=True)
+    contract_end_date = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AgentResult(Base):
+    """Stores individual AI agent execution results."""
+    __tablename__ = "agent_result"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    execution_id = Column(String(50), index=True)  # Groups results from same pipeline run
+    claim_id = Column(String(50), index=True)
+    agent_id = Column(String(20), index=True)  # e.g., 'DEN-001', 'STS-001'
+    agent_name = Column(String(100))
+    model_used = Column(String(50))
+    input_json = Column(Text, nullable=True)
+    output_json = Column(Text)
+    execution_time_ms = Column(Integer)
+    token_count = Column(Integer, nullable=True)
+    validation_status = Column(String(20))  # 'valid', 'invalid', 'warning'
+    validation_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AuditResult(Base):
+    """Stores audit agent results for consistency validation."""
+    __tablename__ = "audit_result"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    execution_id = Column(String(50), index=True)
+    claim_id = Column(String(50), index=True)
+    audit_passed = Column(Boolean, default=False)
+    overall_confidence = Column(Float)
+    consistency_check_json = Column(Text, nullable=True)
+    data_integrity_json = Column(Text, nullable=True)
+    recommendation_validation_json = Column(Text, nullable=True)
+    accuracy_prediction_json = Column(Text, nullable=True)
+    human_review_required = Column(Boolean, default=False)
+    human_review_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AgentMetric(Base):
+    """Hourly agent performance metrics for health monitoring."""
+    __tablename__ = "agent_metric"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    agent_id = Column(String(20), index=True)
+    agent_name = Column(String(100))
+    metric_date = Column(Date, nullable=False)
+    metric_hour = Column(Integer)  # 0-23
+    execution_count = Column(Integer, default=0)
+    success_count = Column(Integer, default=0)
+    failure_count = Column(Integer, default=0)
+    avg_latency_ms = Column(Float, nullable=True)
+    p95_latency_ms = Column(Float, nullable=True)
+    total_tokens = Column(Integer, default=0)
+    total_cost = Column(Float, default=0)
+    error_types_json = Column(Text, nullable=True)  # JSON object of error type counts
+    created_at = Column(DateTime, default=datetime.utcnow)
