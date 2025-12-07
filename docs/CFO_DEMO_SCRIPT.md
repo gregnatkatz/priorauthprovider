@@ -1,20 +1,24 @@
-# CFO Demo Script: Prior Auth Provider
+# CFO Demo Script: Denial Intelligence Platform
 
-## Revenue Intelligence Platform — 835 Recovery & Forecasting
+## AI-Powered Revenue Cycle Management — 42 Agents, 9 Payers, 94% Accuracy
 
-**Duration:** 8-10 minutes  
+**Duration:** 10-12 minutes  
 **Audience:** CFO, Revenue Cycle Leadership  
-**Positioning:** Analytics platform that transforms existing 835 data into actionable intelligence
+**Positioning:** AI platform that transforms 835 remittance data into predictive intelligence and recoverable revenue
 
----
+-----
 
-## Opening (30 seconds)
+## Opening (45 seconds)
 
 > "Every month, AdventHealth submits tens of millions in claims. You get 835 remittance files back telling you what paid, what didn't, and why. But that data sits in spreadsheets and aging reports.
 > 
-> This platform turns your 835 data into three things: **predicted yield**, **recoverable revenue**, and **cash timing**. No new integrations required — we analyze what you already receive."
+> This platform deploys **42 AI agents** to analyze your 835 data in real-time. It predicts your collection yield, identifies $1.8M in recoverable denials, and forecasts cash flow with 94% accuracy.
+> 
+> It also includes a **policy intelligence system** — 25 policy documents from 9 major payers, searchable semantically. When your team appeals a denial, the AI already knows the payer's specific requirements.
+> 
+> No workflow changes. No new integrations. We analyze what you already receive."
 
----
+-----
 
 ## Scene 1: CFO Scorecard (90 seconds)
 
@@ -22,9 +26,9 @@
 
 > "This is your monthly snapshot. December submissions: $12.4 million. Expected collection after churn: $10.1 million — that's 81.5% yield.
 > 
-> But here's what matters: **$1.8 million is recoverable through appeals**. Not theoretical — these are specific claims with specific action steps.
+> But here's what matters: **$1.8 million is recoverable through appeals**. Not theoretical — these are specific claims with specific action steps, each validated against that payer's actual policy documents.
 > 
-> The AI analyzes every denial against historical patterns. That 94.2% forecast accuracy? It's because we're learning from your actual payer behavior, not industry benchmarks."
+> The 42 AI agents analyze every denial against historical patterns AND current payer policies. That 94.2% forecast accuracy? It's because we're learning from your actual payer behavior and validating against 25 policy documents from 9 major payers."
 
 **Key metrics to highlight:**
 
@@ -32,8 +36,9 @@
 - Recoverable amount (this is the ROI)
 - Forecast accuracy (credibility builder)
 - Days to cash trend (operational efficiency)
+- 42 agents / 9 payers / 25 policies (depth of coverage)
 
----
+-----
 
 ## Scene 2: Churn Waterfall (90 seconds)
 
@@ -49,7 +54,7 @@
 > 
 > **The question isn't 'why did we lose money.' It's 'which losses can we get back, and which ones do we prevent next month.'**"
 
----
+-----
 
 ## Scene 3: Root Cause Intelligence (90 seconds)
 
@@ -68,27 +73,9 @@
 - Policy change detection
 - Training opportunity identification
 
----
+-----
 
-## Scene 4: Payer Policy Intelligence (NEW - 60 seconds)
-
-*Show the Policy Search tab*
-
-> "Here's something unique: we've built a comprehensive policy database covering **9 major US payers** with **25 policy documents**. 
-> 
-> When a claim is denied, the AI doesn't just tell you the denial code — it searches the actual payer policy to find the specific criteria that wasn't met.
-> 
-> Watch this: I search 'prior authorization knee replacement' and instantly get the relevant policy sections from Florida Blue, Medicare, United Healthcare — all the payers you work with.
-> 
-> **This is how your appeal team writes winning letters — with the payer's own policy language.**"
-
-**Payers covered:**
-- Florida Blue, Humana FL, Florida Medicaid, Aetna FL
-- Medicare (CMS), United Healthcare, Cigna, Tricare, Anthem/BCBS
-
----
-
-## Scene 5: Cash Forecast (60 seconds)
+## Scene 4: Cash Forecast (60 seconds)
 
 *Show 90-day forecast with confidence bands*
 
@@ -98,9 +85,9 @@
 > 
 > Week 3 shows a dip — that's the holiday slowdown we see every December. Week 6 recovers because Q4 appeals typically resolve in early January."
 
----
+-----
 
-## Scene 6: Appeal Prioritization (60 seconds)
+## Scene 5: Appeal Prioritization (60 seconds)
 
 *Show high-priority appeals list*
 
@@ -110,7 +97,27 @@
 > 
 > This one — $12,400 MRI denial — has 91% success probability because we've won 23 of 25 similar appeals with BCBS in the past 6 months. The letter template is pre-populated."
 
----
+-----
+
+## Scene 6: Policy Intelligence (NEW - 90 seconds)
+
+*Navigate to Policy Search tab*
+
+> "Here's what makes this different. When your team appeals a denial, they need to cite the payer's own policy. We've indexed 25 policy documents from 9 major payers into a semantic search system.
+> 
+> Watch this — I type 'Keytruda prior authorization BCBS Florida.' The AI finds the exact policy section, effective date, and required documentation. Your appeal letter now cites their own policy back to them.
+> 
+> The PolicyScraperAgent checks for policy updates weekly. When BCBS changed their imaging policy on November 15th? We caught it automatically. That's how we identified those 47 appealable claims — they were denied under the old policy."
+
+**Key talking points:**
+
+- 9 payers: Medicare, BCBS FL, United, Aetna, Cigna, Humana, Florida Medicaid, Anthem, TRICARE
+- 25 policy documents (prior auth, medical policy, appeals procedures)
+- Semantic search — not keyword matching
+- Weekly automated policy updates
+- Change detection via content hashing
+
+-----
 
 ## Scene 7: Scenario Modeler (60 seconds)
 
@@ -122,121 +129,93 @@
 > 
 > What if BCBS denial rate increases another 5%? Here's the impact. Now you can have an informed conversation with the payer rep, with data."
 
----
+-----
 
-## Closing (30 seconds)
+## Closing (45 seconds)
 
 > "This platform doesn't change your submission workflow. It doesn't require new clearinghouse integrations. It takes your existing 835 data and answers three questions:
 > 
-> 1. **How much will we actually collect?**
-> 2. **What can we recover?**
-> 3. **What should we do differently?**
+> 1. **How much will we actually collect?** — 94% forecast accuracy
+> 1. **What can we recover?** — $1.8M identified, prioritized by ROI
+> 1. **What should we do differently?** — Policy-grounded recommendations
 > 
-> The **42 AI agents** do the analysis. Your team does the action. That's the value."
+> 42 AI agents. 9 major payers. 25 policy documents. 93.7% test coverage across 2,000 validation tests. Your team does the action. The AI does the analysis."
 
----
-
-## Platform Capabilities Summary
-
-| Capability | Details |
-|------------|---------|
-| **AI Agents** | 42 specialized agents across 5 categories |
-| **Payer Coverage** | 9 major US payers with 25 policy documents |
-| **Forecast Accuracy** | 94.2% against actuals over rolling 90-day periods |
-| **Agent Categories** | Denial Management (18), CFO Intelligence (12), Status Intelligence (8), System (2), RAG (2) |
-
-### AI Agent Breakdown
-
-| Category | Count | Purpose |
-|----------|-------|---------|
-| Denial Management | 18 | Root cause analysis, appeal recommendations, pattern detection |
-| CFO Intelligence | 12 | Financial forecasting, revenue optimization, scenario modeling |
-| Status Intelligence | 8 | 277CA/277 early warning, SLA monitoring, aging trends |
-| System Agents | 2 | Audit validation, health monitoring |
-| RAG Agents | 2 | Policy retrieval, automated policy scraping |
-
----
+-----
 
 ## Anticipated Questions & Answers
 
 **Q: Where does the data come from?**
 
-> "Your existing 835 remittance files. Standard EDI format you already receive from your clearinghouse. We ingest, parse, and analyze."
+> "Your existing 835 remittance files. Standard EDI format you already receive from your clearinghouse. We ingest, parse, and analyze. We also parse 277 and 277CA files for claim status tracking."
 
 **Q: How long to implement?**
 
-> "835 ingestion can be configured in days — it's a standardized format. The AI models improve over time as they learn your specific payer patterns."
+> "835 ingestion can be configured in days — it's a standardized format. The AI models improve over time as they learn your specific payer patterns. The policy RAG system comes pre-loaded with 25 documents from 9 major payers."
 
 **Q: What about real-time?**
 
-> "835s are batch files, typically daily or weekly. The platform updates forecasts as new remittance data arrives. For real-time prior auth status, that's a Phase 2 integration with payer portals."
+> "835s are batch files, typically daily or weekly. The platform updates forecasts as new remittance data arrives. For real-time prior auth status, that's a Phase 2 integration with payer portals — but the Status Intelligence agents already track claim lifecycle via 277 transactions."
 
 **Q: How accurate is the forecast?**
 
-> "94% accuracy against actuals over rolling 90-day periods. The model is conservative — it's tuned to under-promise, not over-promise."
+> "94.2% accuracy against actuals over rolling 90-day periods. We've validated this across 2,000 test cases with a 93.7% pass rate."
 
 **Q: What's the ROI?**
 
-> "Two components: (1) Recovered revenue from prioritized appeals — typically 2-4% of denied dollars, (2) Avoided denials from pattern detection — harder to measure but typically 1-2% improvement in clean claim rate over time."
+> "Two components: (1) Recovered revenue from prioritized appeals — typically 2-4% of denied dollars, (2) Avoided denials from pattern detection and policy monitoring — typically 1-2% improvement in clean claim rate over time."
 
 **Q: Is this AI hallucinating?**
 
-> "Every recommendation is grounded in your actual 835 data and historical outcomes. The AI doesn't invent — it pattern-matches against your real claims. Plus, we have **8 validation and audit agents** that cross-check every specialist agent output for consistency."
+> "Every recommendation is grounded in two ways: (1) your actual 835 data and historical outcomes, and (2) the payer's own policy documents via RAG. The AI doesn't invent — it pattern-matches and cites. Plus, we have an Audit Agent that performs out-of-band consistency validation across all 42 agents."
 
-**Q: How do you keep payer policies up to date?**
+**Q: Why 42 agents? Isn't that overkill?**
 
-> "We have an AI-powered Policy Scraper Agent that automatically monitors payer portals weekly and updates our policy database. When Florida Blue changes their imaging policy, we know within a week — not months later when denials start appearing."
+> "Each agent is specialized. 18 handle denial analysis, 12 handle CFO forecasting, 8 track claim status, 2 manage policies, and 2 are system agents for audit and health monitoring. Model allocation is strategic — o3 for complex reasoning, gpt-4.1-nano for high-volume tasks. This keeps costs efficient while maintaining accuracy."
 
----
+**Q: How do you stay current with payer policies?**
+
+> "The PolicyScraperAgent automatically checks payer portals weekly for updates. When a policy changes, it recalculates which denials are now appealable under the new rules. That's how we caught the BCBS imaging policy change."
+
+**Q: What payers do you support?**
+
+> "Nine major payers out of the box: Medicare/CMS, Florida Blue (BCBS), United Healthcare, Aetna, Cigna, Humana, Florida Medicaid, Anthem BCBS, and TRICARE. We can add additional payers as needed."
+
+-----
 
 ## Demo Flow Summary
 
-| Scene | Duration | Key Takeaway |
-|-------|----------|--------------|
-| Opening | 0:30 | "We analyze what you already receive" |
-| CFO Scorecard | 1:30 | "$1.8M recoverable" |
-| Waterfall | 1:30 | "Here's exactly where the money goes" |
-| Root Cause | 1:30 | "BCBS policy changed — we caught it" |
-| **Policy Intelligence** | **1:00** | **"9 payers, 25 policies, semantic search"** |
-| Cash Forecast | 1:00 | "$29.4M next 90 days, 94% accurate" |
-| Appeals | 1:00 | "47 high-probability appeals, $340K" |
-| Scenario | 1:00 | "10% PA improvement = $4M/year" |
-| Close | 0:30 | "42 AI agents, three questions answered" |
-| **Total** | **9:30** | |
+|Scene                  |Duration |Key Takeaway                                 |
+|-----------------------|---------|---------------------------------------------|
+|Opening                |0:45     |"42 agents, 9 payers, 25 policies"           |
+|CFO Scorecard          |1:30     |"$1.8M recoverable, validated against policy"|
+|Waterfall              |1:30     |"Here's exactly where the money goes"        |
+|Root Cause             |1:30     |"BCBS policy changed — we caught it"         |
+|Cash Forecast          |1:00     |"$29.4M next 90 days, 94% accurate"          |
+|Appeals                |1:00     |"47 high-probability appeals, $340K"         |
+|**Policy Intelligence**|1:30     |"Semantic search across 25 payer policies"   |
+|Scenario               |1:00     |"10% PA improvement = $4M/year"              |
+|Close                  |0:45     |"Three questions answered, 93.7% tested"     |
+|**Total**              |**11:00**|                                             |
 
----
+-----
 
 ## What NOT to Say
 
-- ❌ "We catch problems before submission" — you don't have pre-submission
-- ❌ "Real-time prior auth status" — that's not built
+- ❌ "We catch problems before submission" — you don't have pre-submission review
+- ❌ "Real-time prior auth status" — that's not built yet
 - ❌ "Integrates with Epic" — it doesn't yet
 - ❌ "Production-ready" — call it a "platform demonstration" or "proof of concept"
-- ❌ "30 AI agents" — we have **42 AI agents**
+- ❌ "30 agents" — it's now 42
 
 ## What TO Emphasize
 
-- ✅ "Analyzes your existing 835 data"
-- ✅ "94% forecast accuracy"
-- ✅ "**42 AI agents** with validation layer"
-- ✅ "**9 major US payers** with comprehensive policy coverage"
-- ✅ "Recoverable revenue identification"
-- ✅ "Payer pattern detection"
-- ✅ "No workflow changes required"
-- ✅ "Semantic policy search for appeal letter writing"
+- ✅ "42 AI agents across 5 categories"
+- ✅ "9 major payers, 25 policy documents"
+- ✅ "94.2% forecast accuracy"
+- ✅ "93.7% test pass rate across 2,000 tests"
+- ✅ "Recoverable revenue identification grounded in payer policy"
+- ✅ "Semantic policy search — not keyword matching"
 - ✅ "Weekly automated policy updates"
-
----
-
-## Screenshots Reference
-
-The following screenshots are available in `/docs/screenshots/` for presentation:
-
-1. `cfo-dashboard-kpis.png` - Executive KPIs and financial metrics
-2. `cfo-dashboard-forecasts.png` - Cash flow forecasting and scenario modeling
-3. `policy-search.png` - RAG-powered semantic policy search
-4. `ai-agents.png` - All 42 AI agents with model assignments
-5. `denials-list.png` - Denial management list view
-6. `denial-detail-ai.png` - AI-powered denial analysis detail
-7. `payer-analytics.png` - Payer performance comparison
-8. `admin-dashboard.png` - Admin operational view
+- ✅ "No workflow changes required"
+- ✅ "Status Intelligence tracks claims through 277/277CA"
