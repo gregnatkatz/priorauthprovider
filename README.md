@@ -24,7 +24,7 @@ This POC is designed around 835 ERA (Electronic Remittance Advice) data - the st
 - 🔍 **Early Warning System**: 277CA/277 status intelligence detects issues before denials hit 835
 - 📊 **CFO Dashboard**: 8 executive KPIs with 90-day cash forecasting
 - 🤖 **42 AI Agents**: Diversified model allocation (o3, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, DeepSeek-V3)
-- 📚 **Payer Policy RAG**: ChromaDB-powered semantic search across FL payer policies
+- 📚 **Payer Policy RAG**: ChromaDB-powered semantic search across 8 major US payer policies
 - ⚡ **Intelligent Routing**: Automatic model selection based on task complexity
 - ✅ **Audit & Validation**: Out-of-band consistency checks across all agent outputs
 
@@ -164,13 +164,13 @@ The platform uses 42 AI agents with diversified Azure OpenAI models for comprehe
 | Agent | Model | Purpose |
 |-------|-------|---------|
 | PolicyRAGAgent | gpt-4.1 | Retrieves and validates claims against payer policies |
-| PolicyScraperAgent | gpt-4.1 | Weekly automated scraping of FL payer policy portals |
+| PolicyScraperAgent | gpt-4.1 | Weekly automated scraping of payer policy portals |
 
 ### 📚 Payer Policy RAG System (ChromaDB)
 
-The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system for FL payer policies using ChromaDB as the vector store. This enables semantic search across payer policy documents for intelligent claim validation.
+The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system for major US payer policies using ChromaDB as the vector store. This enables semantic search across payer policy documents for intelligent claim validation.
 
-**Supported FL Payers:**
+**Supported Payers (8 Total):**
 
 | Payer | Policy Types | Documents |
 |-------|--------------|-----------|
@@ -178,6 +178,10 @@ The platform includes a comprehensive RAG (Retrieval-Augmented Generation) syste
 | **Humana Florida** | Prior Auth, Step Therapy, Coverage | 2 |
 | **Florida Medicaid (AHCA)** | Coverage Policy, Fee Schedule | 2 |
 | **Aetna Florida** | Clinical Policy Bulletin, Utilization Review, Appeals | 3 |
+| **Medicare (CMS)** | NCD, LCD, Medicare Benefit Policy | 3 |
+| **United Healthcare** | Orthopedic PA, Drug PA, Appeals Guide | 3 |
+| **Cigna Healthcare** | Advanced Imaging, Surgical PA, Appeals | 3 |
+| **TRICARE (Military)** | Policy Manual, Prior Auth, Appeals | 3 |
 
 **Policy Document Types:**
 - `prior_auth` - Prior authorization requirements by procedure
@@ -199,7 +203,7 @@ The platform includes a comprehensive RAG (Retrieval-Augmented Generation) syste
 
 **API Endpoints:**
 - `GET /api/policies/search` - Semantic search across policies
-- `GET /api/policies/payers` - List FL payers with policy counts
+- `GET /api/policies/payers` - List all payers with policy counts
 - `GET /api/policies/{policy_number}` - Get policy details
 - `POST /api/policies/validate-claim` - Validate claim against policies
 - `POST /api/policies/scrape` - Trigger policy scraping
