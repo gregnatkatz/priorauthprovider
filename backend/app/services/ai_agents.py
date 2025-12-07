@@ -8,10 +8,52 @@ import json
 import asyncio
 from typing import Optional
 from datetime import datetime
+from collections import defaultdict
 from openai import AzureOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ==================== AGENT USAGE INSTRUMENTATION ====================
+# Global counter to track agent calls for verification that all agents are interacting
+AGENT_CALL_COUNTS = defaultdict(int)
+AGENT_CALL_HISTORY = []  # List of (timestamp, agent_name, status) tuples
+
+def record_agent_call(agent_name: str, status: str = "success"):
+    """Record an agent call for usage tracking"""
+    AGENT_CALL_COUNTS[agent_name] += 1
+    AGENT_CALL_HISTORY.append({
+        "timestamp": datetime.utcnow().isoformat(),
+        "agent_name": agent_name,
+        "status": status,
+        "call_number": AGENT_CALL_COUNTS[agent_name]
+    })
+
+def get_agent_usage_stats():
+    """Get agent usage statistics for verification"""
+    return {
+        "call_counts": dict(AGENT_CALL_COUNTS),
+        "total_calls": sum(AGENT_CALL_COUNTS.values()),
+        "agents_called": len(AGENT_CALL_COUNTS),
+        "recent_calls": AGENT_CALL_HISTORY[-50:] if AGENT_CALL_HISTORY else [],
+        "agents_never_called": [
+            agent for agent in [
+                "sdoh_scorer", "care_gap_detector", "clinical_urgency", "financial_value",
+                "recovery_predictor", "p2p_optimizer", "queue_wait_time",
+                "pa_risk_predictor", "doc_completeness", "policy_monitor",
+                "root_cause_analyzer", "staff_feedback_processor",
+                "safety_validator", "consensus_checker", "policy_match_grader",
+                "viability_scorer", "eligibility_verifier", "followup_scheduler"
+            ] if agent not in AGENT_CALL_COUNTS
+        ]
+    }
+
+def reset_agent_usage_stats():
+    """Reset agent usage statistics"""
+    global AGENT_CALL_COUNTS, AGENT_CALL_HISTORY
+    AGENT_CALL_COUNTS = defaultdict(int)
+    AGENT_CALL_HISTORY = []
+# ==================== END INSTRUMENTATION ====================
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "")
@@ -205,8 +247,10 @@ class AIAgentOrchestrator:
         """Run a single agent and return its results"""
         try:
             result = await agent.analyze(denial_data)
+            record_agent_call(agent_name, "success")
             return {agent_name: result}
         except Exception as e:
+            record_agent_call(agent_name, "error")
             return {agent_name: {"error": str(e), "status": "failed"}}
     
     def _synthesize_recommendations(self, results: dict) -> dict:
