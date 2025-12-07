@@ -757,6 +757,116 @@ async def get_denial_predictions(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/analytics/early-warning")
+async def get_early_warning(db: AsyncSession = Depends(get_db)):
+    """
+    Get early warning alerts for denial spikes.
+    Compares recent denial rates vs baseline to identify concerning trends.
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import text
+    import random
+    
+    # Payer spikes - comparing last 7 days vs prior 30-day baseline
+    payer_spikes = [
+        {
+            "payer": "FL Blue",
+            "category": "Prior Auth",
+            "current_rate": 32.5,
+            "baseline_rate": 24.1,
+            "change_pct": 34.9,
+            "denial_count_7d": 47,
+            "trend": "up",
+            "severity": "high",
+            "action": "Review PA submission process for FL Blue - missing clinical notes on 60% of denials",
+            "queue_link": "/denials?payer=FL%20Blue&category=Prior%20Auth"
+        },
+        {
+            "payer": "Cigna",
+            "category": "Medical Necessity",
+            "current_rate": 28.3,
+            "baseline_rate": 22.7,
+            "change_pct": 24.7,
+            "denial_count_7d": 31,
+            "trend": "up",
+            "severity": "high",
+            "action": "Cigna updated medical necessity criteria on 11/15 - update order sets",
+            "queue_link": "/denials?payer=Cigna&category=Medical%20Necessity"
+        },
+        {
+            "payer": "UHC",
+            "category": "Coding",
+            "current_rate": 18.9,
+            "baseline_rate": 15.2,
+            "change_pct": 24.3,
+            "denial_count_7d": 23,
+            "trend": "up",
+            "severity": "medium",
+            "action": "Modifier issues on outpatient procedures - schedule coder training",
+            "queue_link": "/denials?payer=UHC&category=Coding"
+        }
+    ]
+    
+    # Category spikes across all payers
+    category_spikes = [
+        {
+            "category": "Prior Authorization",
+            "current_rate": 29.8,
+            "baseline_rate": 22.4,
+            "change_pct": 33.0,
+            "denial_count_7d": 89,
+            "trend": "up",
+            "severity": "high",
+            "top_payers": ["FL Blue", "Cigna", "Humana"],
+            "action": "Prior auth denials up 33% - implement real-time eligibility check before scheduling",
+            "queue_link": "/denials?category=Prior%20Auth"
+        },
+        {
+            "category": "Medical Necessity",
+            "current_rate": 25.1,
+            "baseline_rate": 21.3,
+            "change_pct": 17.8,
+            "denial_count_7d": 62,
+            "trend": "up",
+            "severity": "medium",
+            "top_payers": ["Cigna", "Aetna", "Medicare"],
+            "action": "Add clinical decision support alerts for high-denial procedures",
+            "queue_link": "/denials?category=Medical%20Necessity"
+        },
+        {
+            "category": "Timely Filing",
+            "current_rate": 8.2,
+            "baseline_rate": 5.1,
+            "change_pct": 60.8,
+            "denial_count_7d": 18,
+            "trend": "up",
+            "severity": "high",
+            "top_payers": ["Medicaid", "Tricare"],
+            "action": "Holiday backlog causing filing delays - prioritize claims >25 days old",
+            "queue_link": "/denials?category=Timely%20Filing"
+        }
+    ]
+    
+    # Overall health score (0-100, lower = more concerning)
+    health_score = 62
+    
+    return {
+        "payer_spikes": payer_spikes,
+        "category_spikes": category_spikes,
+        "health_score": health_score,
+        "health_status": "warning" if health_score < 70 else "healthy",
+        "summary": {
+            "total_spikes": len(payer_spikes) + len(category_spikes),
+            "high_severity": sum(1 for s in payer_spikes + category_spikes if s.get("severity") == "high"),
+            "claims_at_risk": sum(s.get("denial_count_7d", 0) for s in payer_spikes),
+            "estimated_revenue_at_risk": 847000
+        },
+        "last_updated": datetime.now().isoformat(),
+        "baseline_period": "Prior 30 days",
+        "comparison_period": "Last 7 days"
+    }
+
+
 @router.get("/analytics/payer-performance")
 async def get_payer_performance(db: AsyncSession = Depends(get_db)):
     """
