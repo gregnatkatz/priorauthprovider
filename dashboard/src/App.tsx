@@ -18,7 +18,7 @@ import {
   Brain, Activity, Search, ChevronLeft, ChevronRight, RefreshCw,
   Building2, Stethoscope, Shield, Zap, Moon, Sun, Users, Briefcase,
   X, Phone, FileUp, CheckCircle, AlertTriangle, Calendar,
-  Target, Clipboard, UserCheck, Timer, ThumbsUp, ThumbsDown, ArrowRight
+  Target, Clipboard, UserCheck, Timer, ThumbsUp, ThumbsDown, ArrowRight, Wallet
 } from 'lucide-react'
 
 type Persona = 'clinical' | 'admin' | 'executive'
@@ -4163,8 +4163,8 @@ function App() {
     </div>
   )
 
-  // CFO Dashboard KPI Card with sparkline
-  const CFOKPICard = ({ title, value, trend, trendValue, subtitle, alert, trendData }: {
+  // CFO Dashboard KPI Card with sparkline bars (new design)
+  const CFOKPICard = ({ title, value, trend, trendValue, subtitle, alert, trendData, color = 'blue', icon }: {
     title: string;
     value: string;
     trend?: 'up' | 'down' | 'flat';
@@ -4172,41 +4172,93 @@ function App() {
     subtitle?: string;
     alert?: boolean;
     trendData?: { v: number }[];
-  }) => (
-    <Card className={`bg-gradient-to-br from-slate-900/60 to-slate-950/60 border ${alert ? 'border-red-500/50' : 'border-slate-800/80'}`}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-1">
-          <span className="text-xs font-medium text-slate-400">{title}</span>
+    color?: 'blue' | 'emerald' | 'amber' | 'violet' | 'red' | 'cyan' | 'indigo';
+    icon?: React.ReactNode;
+  }) => {
+    const colorClasses = {
+      blue: 'kpi-card-blue',
+      emerald: 'kpi-card-emerald glow-emerald',
+      amber: 'kpi-card-amber',
+      violet: 'kpi-card-violet',
+      red: 'kpi-card-red glow-red',
+      cyan: 'kpi-card-cyan',
+      indigo: 'kpi-card-indigo',
+    };
+    const iconBgClasses = {
+      blue: 'bg-blue-500/20',
+      emerald: 'bg-emerald-500/20',
+      amber: 'bg-amber-500/20',
+      violet: 'bg-violet-500/20',
+      red: 'bg-red-500/20',
+      cyan: 'bg-cyan-500/20',
+      indigo: 'bg-indigo-500/20',
+    };
+    const iconColorClasses = {
+      blue: 'text-blue-400',
+      emerald: 'text-emerald-400',
+      amber: 'text-amber-400',
+      violet: 'text-violet-400',
+      red: 'text-red-400',
+      cyan: 'text-cyan-400',
+      indigo: 'text-indigo-400',
+    };
+    const barColorClasses = {
+      blue: 'bg-blue-500/50',
+      emerald: 'bg-emerald-500/50',
+      amber: 'bg-amber-500/50',
+      violet: 'bg-violet-500/50',
+      red: 'bg-red-500/50',
+      cyan: 'bg-cyan-500/50',
+      indigo: 'bg-indigo-500/50',
+    };
+    const barActiveClasses = {
+      blue: 'bg-blue-500',
+      emerald: 'bg-emerald-500',
+      amber: 'bg-amber-500',
+      violet: 'bg-violet-500',
+      red: 'bg-red-500',
+      cyan: 'bg-cyan-500',
+      indigo: 'bg-indigo-500',
+    };
+    
+    return (
+      <div className={`${colorClasses[color]} hover:border-white/10`}>
+        <div className="flex items-start justify-between mb-3">
+          <div className={`w-10 h-10 rounded-xl ${iconBgClasses[color]} flex items-center justify-center`}>
+            {icon || <DollarSign className={`w-5 h-5 ${iconColorClasses[color]}`} />}
+          </div>
           {trend && trendValue && (
-            <div className={`flex items-center text-[11px] px-2 py-0.5 rounded-full ${
-              trend === 'up' ? 'bg-emerald-500/20 text-emerald-400' : 
-              trend === 'down' ? 'bg-red-500/20 text-red-400' : 
-              'bg-slate-600/50 text-slate-400'
+            <div className={`flex items-center gap-1 text-xs font-medium ${
+              trend === 'up' ? 'text-emerald-400' : 
+              trend === 'down' ? 'text-red-400' : 
+              'text-gray-400'
             }`}>
-              {trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : 
-               trend === 'down' ? <TrendingDown className="w-3 h-3 mr-1" /> : null}
+              {trend === 'up' ? <TrendingUp className="w-3 h-3" /> : 
+               trend === 'down' ? <TrendingDown className="w-3 h-3" /> : null}
               {trendValue}
             </div>
           )}
-        </div>
-        <div className="flex items-end justify-between mt-2">
-          <div>
-            <span className={`text-2xl font-bold ${alert ? 'text-red-400' : 'text-white'}`}>{value}</span>
-            {subtitle && <p className="text-[11px] text-slate-500 mt-1">{subtitle}</p>}
-          </div>
-          {trendData && (
-            <div className="w-16 h-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
-                  <Line type="monotone" dataKey="v" stroke={trend === 'down' ? '#ef4444' : '#10b981'} strokeWidth={1.5} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          {subtitle && !trendValue && (
+            <span className="text-xs text-gray-400">{subtitle}</span>
           )}
         </div>
-      </CardContent>
-    </Card>
-  );
+        <p className={`text-2xl font-bold ${alert ? 'text-red-400' : 'text-white'}`}>{value}</p>
+        <p className="text-xs text-gray-500 mt-1">{title}</p>
+        {subtitle && trendValue && <p className="text-xs text-gray-600">{subtitle}</p>}
+        {trendData && (
+          <div className="mt-2 h-6 flex items-end gap-0.5">
+            {trendData.map((d, i) => (
+              <div 
+                key={i} 
+                className={`w-2 rounded-t ${i === trendData.length - 1 ? barActiveClasses[color] : barColorClasses[color]}`}
+                style={{ height: `${Math.max(20, d.v * 10)}%` }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Generate sparkline trend data
   const generateSparkline = (direction: 'up' | 'down', variance = 0.1) => {
@@ -4307,7 +4359,7 @@ function App() {
             </CardContent>
           </Card>
 
-          {/* 8 KPI Cards with Sparklines */}
+          {/* 8 KPI Cards with Sparklines - Different colors per card */}
           <div className="grid grid-cols-4 gap-4">
             <CFOKPICard 
               title="Submitted (837s MTD)" 
@@ -4316,6 +4368,8 @@ function App() {
               trendValue="+8.2%" 
               subtitle="vs $11.5M last month"
               trendData={generateSparkline('up')}
+              color="blue"
+              icon={<FileText className="w-5 h-5 text-blue-400" />}
             />
             <CFOKPICard 
               title="Expected Collection" 
@@ -4324,14 +4378,18 @@ function App() {
               trendValue="+6.1%" 
               subtitle="81.5% predicted yield"
               trendData={generateSparkline('up')}
+              color="emerald"
+              icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
             />
             <CFOKPICard 
               title="Churn Rate" 
               value="18.5%" 
-              trend="up" 
+              trend="down" 
               trendValue="-2.1%" 
               subtitle="Trending down from 22.1% in July"
-              trendData={generateSparkline('up')}
+              trendData={generateSparkline('down')}
+              color="amber"
+              icon={<TrendingDown className="w-5 h-5 text-amber-400" />}
             />
             <CFOKPICard 
               title="Recoverable via Appeal" 
@@ -4340,23 +4398,29 @@ function App() {
               trendValue="+12.4%" 
               subtitle="67% success rate with AI"
               trendData={generateSparkline('up')}
+              color="violet"
+              icon={<RefreshCw className="w-5 h-5 text-violet-400" />}
             />
             <CFOKPICard 
               title="Write-off Risk" 
               value="$890K" 
-              trend="up" 
+              trend="down" 
               trendValue="-15.3%" 
               subtitle="Down from $1.05M last month"
               alert
-              trendData={generateSparkline('up')}
+              trendData={generateSparkline('down')}
+              color="red"
+              icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
             />
             <CFOKPICard 
               title="Days to Cash" 
               value="42 days" 
-              trend="up" 
+              trend="down" 
               trendValue="-3 days" 
               subtitle="Medicare: 28d, Commercial: 45d"
-              trendData={generateSparkline('up')}
+              trendData={generateSparkline('down')}
+              color="cyan"
+              icon={<Clock className="w-5 h-5 text-cyan-400" />}
             />
             <CFOKPICard 
               title="Forecast Accuracy" 
@@ -4365,6 +4429,8 @@ function App() {
               trendValue="+1.8%" 
               subtitle="Based on last 90 days"
               trendData={generateSparkline('up')}
+              color="indigo"
+              icon={<Target className="w-5 h-5 text-indigo-400" />}
             />
             <CFOKPICard 
               title="Cash This Week" 
@@ -4373,6 +4439,8 @@ function App() {
               trendValue="+4.2%" 
               subtitle="87% confidence interval"
               trendData={generateSparkline('up')}
+              color="emerald"
+              icon={<Wallet className="w-5 h-5 text-emerald-400" />}
             />
           </div>
 
@@ -5238,13 +5306,13 @@ function App() {
                       {PERSONA_CONFIG[persona].visibleTabs.includes('cfo') && (
                         <TabsTrigger value="cfo" className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4" />
-                          CFO Dashboard
+                          Financial Intelligence
                         </TabsTrigger>
                       )}
                       {PERSONA_CONFIG[persona].visibleTabs.includes('dashboard') && (
                         <TabsTrigger value="dashboard" className="flex items-center gap-2">
                           <Activity className="h-4 w-4" />
-                          Dashboard
+                          Denial Operations
                         </TabsTrigger>
                       )}
                                             {PERSONA_CONFIG[persona].visibleTabs.includes('pa') && (
