@@ -314,6 +314,24 @@ async def get_ai_insights(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/ai/agent-usage")
+async def get_agent_usage():
+    """
+    Get agent usage statistics for verification that all agents are being called.
+    Returns call counts per agent, total calls, and list of agents never called.
+    """
+    from app.services.ai_agents import get_agent_usage_stats
+    return get_agent_usage_stats()
+
+
+@router.post("/ai/reset-agent-usage")
+async def reset_agent_usage():
+    """Reset agent usage statistics for fresh testing."""
+    from app.services.ai_agents import reset_agent_usage_stats
+    reset_agent_usage_stats()
+    return {"status": "reset", "message": "Agent usage statistics have been reset"}
+
+
 @router.get("/ai/agent-status")
 async def get_agent_status():
     """

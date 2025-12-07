@@ -511,11 +511,28 @@ def seed_database():
         
         print("\nSeeding fact tables...")
         
-        # Generate 5000 claims for a month of data - scaled for ContosoHealth's volume
+        # Generate 6 months of historical data with improvement trends
         # ContosoHealth has ~55 hospitals processing millions of claims annually
-        # 5000 claims represents approximately 1 week of denial-prone claims
-        # Date range: November 2025 (one month of data)
-        start_date = date(2025, 11, 1)
+        # 6000 claims represents approximately 6 months of denial-prone claims (1000/month)
+        # Date range: June 2025 - November 2025 (6 months of historical data)
+        # 
+        # IMPROVEMENT TRENDS (month-over-month):
+        # - Denial rate: 28% -> 24% -> 21% -> 18% -> 16% -> 14% (improving)
+        # - Appeal success: 45% -> 50% -> 55% -> 60% -> 65% -> 70% (improving)
+        # - Time to resolution: 14 -> 12 -> 10 -> 9 -> 8 -> 7 days (improving)
+        # - AI-assisted rate: 20% -> 35% -> 50% -> 65% -> 80% -> 90% (increasing)
+        #
+        MONTH_TRENDS = [
+            {"month": 6, "start": date(2025, 6, 1), "end": date(2025, 6, 30), "denial_rate": 0.28, "appeal_success": 0.45, "resolution_days": 14, "ai_assisted_pct": 0.20},
+            {"month": 7, "start": date(2025, 7, 1), "end": date(2025, 7, 31), "denial_rate": 0.24, "appeal_success": 0.50, "resolution_days": 12, "ai_assisted_pct": 0.35},
+            {"month": 8, "start": date(2025, 8, 1), "end": date(2025, 8, 31), "denial_rate": 0.21, "appeal_success": 0.55, "resolution_days": 10, "ai_assisted_pct": 0.50},
+            {"month": 9, "start": date(2025, 9, 1), "end": date(2025, 9, 30), "denial_rate": 0.18, "appeal_success": 0.60, "resolution_days": 9, "ai_assisted_pct": 0.65},
+            {"month": 10, "start": date(2025, 10, 1), "end": date(2025, 10, 31), "denial_rate": 0.16, "appeal_success": 0.65, "resolution_days": 8, "ai_assisted_pct": 0.80},
+            {"month": 11, "start": date(2025, 11, 1), "end": date(2025, 11, 30), "denial_rate": 0.14, "appeal_success": 0.70, "resolution_days": 7, "ai_assisted_pct": 0.90},
+        ]
+        
+        # Use overall date range for backward compatibility
+        start_date = date(2025, 6, 1)
         end_date = date(2025, 11, 30)
         
         claims = []
@@ -558,19 +575,35 @@ def seed_database():
         # Store claim data for denial creation
         claims_to_deny = []
         
-        for i in range(5000):
+        # Helper function to get month trends for a given date
+        def get_month_trends(service_date):
+            month = service_date.month
+            for trend in MONTH_TRENDS:
+                if trend["month"] == month:
+                    return trend
+            return MONTH_TRENDS[-1]  # Default to latest month
+        
+        # Generate 6000 claims (1000 per month) for 6 months of historical data
+        for i in range(6000):
             patient = random.choice(patients)
             payer = patient.primary_payer
             facility = random.choice(facilities)
             physician = random.choice(physicians)
             procedure = random.choice(procedures)
             
-            service_date = generate_date_in_range(start_date, end_date)
+            # Distribute claims evenly across 6 months
+            month_idx = i // 1000  # 0-5 for months 6-11
+            month_trend = MONTH_TRENDS[min(month_idx, len(MONTH_TRENDS) - 1)]
+            service_date = generate_date_in_range(month_trend["start"], month_trend["end"])
             submission_date = service_date + timedelta(days=random.randint(1, 5))
             
-            # Determine if claim will be denied based on payer denial rate and procedure risk
-            base_denial_prob = payer.avg_denial_rate + procedure.denial_risk_score
+            # Use month-specific denial rate (shows improvement over time)
+            month_denial_rate = month_trend["denial_rate"]
+            base_denial_prob = (month_denial_rate + procedure.denial_risk_score) / 2
             is_denied = random.random() < min(base_denial_prob, 0.35)  # Cap at 35%
+            
+            # Track if this claim will be AI-assisted (increases over time)
+            is_ai_assisted = random.random() < month_trend["ai_assisted_pct"]
             
             billed_amount = procedure.avg_commercial_rate * random.uniform(0.9, 1.1)
             
@@ -619,7 +652,7 @@ def seed_database():
             session.add(claim)
             claims.append(claim)
             
-            # Store denial info for later creation
+            # Store denial info for later creation (including month trends for historical analysis)
             if is_denied:
                 claims_to_deny.append({
                     "claim": claim,
@@ -627,6 +660,8 @@ def seed_database():
                     "procedure": procedure,
                     "billed_amount": billed_amount,
                     "adjudication_date": adjudication_date,
+                    "month_trend": month_trend,
+                    "is_ai_assisted": is_ai_assisted,
                 })
         
         # Flush claims to get their IDs
@@ -640,6 +675,8 @@ def seed_database():
             procedure = deny_info["procedure"]
             billed_amount = deny_info["billed_amount"]
             adjudication_date = deny_info["adjudication_date"]
+            month_trend = deny_info["month_trend"]
+            is_ai_assisted = deny_info["is_ai_assisted"]
             
             # Select denial scenario
             scenario = random.choices(
@@ -667,11 +704,19 @@ def seed_database():
             carc_code = random.choice(scenario_carc_map[scenario])
             denial_reason = next((dr for dr in denial_reasons if dr.carc_code == carc_code), random.choice(denial_reasons))
             
-            # AI agent enrichments
+            # AI agent enrichments - use month-specific trends for historical improvement
             sdoh_score = patient.sdoh_composite_score
             clinical_urgency = random.uniform(3, 9) if procedure.category in ["Surgery", "Cardiology"] else random.uniform(1, 6)
-            appeal_success_prob = denial_reason.historical_appeal_success_rate * random.uniform(0.8, 1.2)
+            
+            # Use month-specific appeal success rate (shows improvement over time)
+            base_appeal_success = denial_reason.historical_appeal_success_rate
+            month_appeal_boost = month_trend["appeal_success"] - 0.45  # Boost from baseline 45%
+            appeal_success_prob = base_appeal_success + month_appeal_boost * random.uniform(0.8, 1.2)
             appeal_success_prob = min(max(appeal_success_prob, 0.1), 0.95)
+            
+            # AI-assisted cases have higher success rates
+            if is_ai_assisted:
+                appeal_success_prob = min(appeal_success_prob * 1.3, 0.95)  # 30% boost for AI-assisted
             
             # Calculate priority score (composite of multiple factors)
             financial_value = billed_amount / 5000  # Normalize
