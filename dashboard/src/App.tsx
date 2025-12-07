@@ -1177,89 +1177,124 @@ function App() {
       setReEvalResult(null) // Clear previous results
     }
 
+    // Sparkline bar component for KPI cards
+    const SparklineBars = ({ data, color }: { data: number[], color: string }) => {
+      const colorClasses: Record<string, { bar: string, active: string }> = {
+        blue: { bar: 'bg-blue-500/50', active: 'bg-blue-500' },
+        emerald: { bar: 'bg-emerald-500/50', active: 'bg-emerald-500' },
+        amber: { bar: 'bg-amber-500/50', active: 'bg-amber-500' },
+        red: { bar: 'bg-red-500/50', active: 'bg-red-500' },
+        violet: { bar: 'bg-violet-500/50', active: 'bg-violet-500' },
+        cyan: { bar: 'bg-cyan-500/50', active: 'bg-cyan-500' },
+        indigo: { bar: 'bg-indigo-500/50', active: 'bg-indigo-500' },
+      }
+      const colors = colorClasses[color] || colorClasses.blue
+      const maxVal = Math.max(...data)
+      return (
+        <div className="mt-2 h-6 flex items-end gap-0.5">
+          {data.map((val, i) => (
+            <div 
+              key={i}
+              className={`w-2 rounded-t ${i === data.length - 1 ? colors.active : colors.bar}`}
+              style={{ height: `${(val / maxVal) * 100}%` }}
+            />
+          ))}
+        </div>
+      )
+    }
+
     const renderDashboard = () => (
       <div className="space-y-6">
-        {/* Top Stats Row - Vision UI Style */}
+        {/* Top Stats Row - New Design with Gradient Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">Total Claims</p>
-                <div className="text-2xl font-bold text-white mt-1">{metrics?.total_claims.toLocaleString()}</div>
-                <p className="text-xs text-emerald-400 mt-1">+12% this month</p>
+          {/* Total Claims - Blue */}
+          <div className="kpi-card-blue hover:border-white/10">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-blue-400" />
               </div>
-              <div className="vision-icon-box vision-gradient-blue">
-                <FileText className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-1 text-xs font-medium text-emerald-400">
+                <TrendingUp className="w-3 h-3" />
+                +12%
               </div>
             </div>
+            <p className="text-2xl font-bold text-white">{metrics?.total_claims.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">Total Claims</p>
+            <SparklineBars data={[40, 55, 45, 70, 60, 80, 100]} color="blue" />
           </div>
         
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">Denial Rate</p>
-                <div className="text-2xl font-bold text-red-400 mt-1">{metrics?.denial_rate}%</div>
-                <p className="text-xs text-slate-400 mt-1">{metrics?.total_denials} denials</p>
+          {/* Denial Rate - Red */}
+          <div className="kpi-card-red hover:border-white/10">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
-              <div className="vision-icon-box vision-gradient-red">
-                <AlertCircle className="h-5 w-5 text-white" />
-              </div>
+              <span className="text-xs text-gray-400">{metrics?.total_denials} denials</span>
             </div>
+            <p className="text-2xl font-bold text-white">{metrics?.denial_rate}%</p>
+            <p className="text-xs text-gray-500 mt-1">Denial Rate</p>
+            <SparklineBars data={[100, 90, 85, 75, 70, 65, 55]} color="red" />
           </div>
         
           {persona === 'clinical' ? (
-            <div className="vision-stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide">Avg Time to Treat</p>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1">2.3 days</div>
-                  <p className="text-xs text-emerald-400 mt-1">-1.5 days with AI</p>
+            /* Avg Time to Treat - Emerald */
+            <div className="kpi-card-emerald hover:border-white/10 glow-emerald">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-emerald-400" />
                 </div>
-                <div className="vision-icon-box vision-gradient-green">
-                  <Clock className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-1 text-xs font-medium text-emerald-400">
+                  <TrendingDown className="w-3 h-3" />
+                  -1.5 days
                 </div>
               </div>
+              <p className="text-2xl font-bold text-white">2.3 days</p>
+              <p className="text-xs text-gray-500 mt-1">Avg Time to Treat</p>
+              <SparklineBars data={[100, 85, 70, 60, 50, 45, 40]} color="emerald" />
             </div>
           ) : (
-            <div className="vision-stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide">At Risk Amount</p>
-                  <div className="text-2xl font-bold text-white mt-1">{formatCurrency(metrics?.total_denied_amount || 0)}</div>
-                  <p className="text-xs text-amber-400 mt-1">Pending recovery</p>
+            /* At Risk Amount - Amber */
+            <div className="kpi-card-amber hover:border-white/10">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-amber-400" />
                 </div>
-                <div className="vision-icon-box vision-gradient-orange">
-                  <DollarSign className="h-5 w-5 text-white" />
-                </div>
+                <span className="text-xs text-amber-400">Pending recovery</span>
               </div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(metrics?.total_denied_amount || 0)}</p>
+              <p className="text-xs text-gray-500 mt-1">At Risk Amount</p>
+              <SparklineBars data={[50, 60, 55, 75, 70, 85, 90]} color="amber" />
             </div>
           )}
         
           {persona === 'clinical' ? (
-            <div className="vision-stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide">Quality Score</p>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1">94.2%</div>
-                  <p className="text-xs text-emerald-400 mt-1">+3.1% this month</p>
+            /* Quality Score - Violet */
+            <div className="kpi-card-violet hover:border-white/10 glow-violet">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-violet-400" />
                 </div>
-                <div className="vision-icon-box vision-gradient-purple">
-                  <Activity className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-1 text-xs font-medium text-emerald-400">
+                  <TrendingUp className="w-3 h-3" />
+                  +3.1%
                 </div>
               </div>
+              <p className="text-2xl font-bold text-white">94.2%</p>
+              <p className="text-xs text-gray-500 mt-1">Quality Score</p>
+              <SparklineBars data={[70, 75, 80, 85, 88, 92, 94]} color="violet" />
             </div>
           ) : (
-            <div className="vision-stat-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide">Recovery Rate</p>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1">{metrics?.recovery_rate}%</div>
-                  <p className="text-xs text-slate-400 mt-1">{formatCurrency(metrics?.total_recovered_amount || 0)}</p>
+            /* Recovery Rate - Emerald */
+            <div className="kpi-card-emerald hover:border-white/10 glow-emerald">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-emerald-400" />
                 </div>
-                <div className="vision-icon-box vision-gradient-green">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
+                <span className="text-xs text-gray-400">{formatCurrency(metrics?.total_recovered_amount || 0)}</span>
               </div>
+              <p className="text-2xl font-bold text-white">{metrics?.recovery_rate}%</p>
+              <p className="text-xs text-gray-500 mt-1">Recovery Rate</p>
+              <SparklineBars data={[50, 60, 55, 75, 70, 85, 90]} color="emerald" />
             </div>
                   )}
                 </div>
@@ -1361,65 +1396,71 @@ function App() {
                   </div>
                 )}
 
-                {/* Second Stats Row */}
+                {/* Second Stats Row - New Design with Gradient Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">Pending Appeals</p>
-                <div className="text-2xl font-bold text-white mt-1">{metrics?.pending_appeals}</div>
-                <p className="text-xs text-emerald-400 mt-1">{metrics?.avg_appeal_success_rate}% success rate</p>
+          {/* Pending Appeals - Violet */}
+          <div className="kpi-card-violet hover:border-white/10">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-violet-400" />
               </div>
-              <div className="vision-icon-box vision-gradient-purple">
-                <Clock className="h-5 w-5 text-white" />
-              </div>
+              <span className="text-xs text-emerald-400">{metrics?.avg_appeal_success_rate}% success</span>
             </div>
+            <p className="text-2xl font-bold text-white">{metrics?.pending_appeals}</p>
+            <p className="text-xs text-gray-500 mt-1">Pending Appeals</p>
+            <SparklineBars data={[30, 45, 35, 50, 40, 55, 45]} color="violet" />
           </div>
         
-          <div className="vision-stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wide">High Priority</p>
-                <div className="text-2xl font-bold text-red-400 mt-1">{metrics?.high_priority_denials}</div>
-                <p className="text-xs text-red-400 mt-1">Immediate attention</p>
+          {/* High Priority - Red with glow */}
+          <div className="kpi-card-red hover:border-white/10 glow-red">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-red-400" />
               </div>
-              <div className="vision-icon-box vision-gradient-red">
-                <Zap className="h-5 w-5 text-white" />
-              </div>
+              <span className="text-xs text-red-400">Immediate attention</span>
             </div>
+            <p className="text-2xl font-bold text-white">{metrics?.high_priority_denials}</p>
+            <p className="text-xs text-gray-500 mt-1">High Priority</p>
+            <SparklineBars data={[60, 70, 65, 80, 75, 85, 90]} color="red" />
           </div>
         
-                  <div className="vision-stat-card">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-400 uppercase tracking-wide">835 Remittances</p>
-                        <div className="text-2xl font-bold text-white mt-1">{metrics?.total_claims.toLocaleString()}</div>
-                        <p className="text-xs text-slate-400 mt-1">Processed this month</p>
-                      </div>
-                      <div className="vision-icon-box vision-gradient-blue">
-                        <FileText className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
-                  </div>
+          {/* 835 Remittances - Cyan */}
+          <div className="kpi-card-cyan hover:border-white/10">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-cyan-400" />
+              </div>
+              <span className="text-xs text-gray-400">Processed this month</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{metrics?.total_claims.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">835 Remittances</p>
+            <SparklineBars data={[50, 60, 55, 75, 70, 85, 90]} color="cyan" />
+          </div>
         
-                  <div className="vision-stat-card">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-400 uppercase tracking-wide">Avg Queue Wait</p>
-                        <div className={`text-2xl font-bold mt-1 ${
-                          (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'text-red-400' : 
-                          (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'text-amber-400' : 'text-emerald-400'
-                        }`}>{metrics?.avg_queue_wait_time_display || '0m'}</div>
-                        <p className="text-xs text-slate-400 mt-1">Time in queue</p>
-                      </div>
-                      <div className={`vision-icon-box ${
-                        (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'vision-gradient-red' : 
-                        (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'vision-gradient-orange' : 'vision-gradient-green'
-                      }`}>
-                        <Clock className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
-                  </div>
+          {/* Avg Queue Wait - Dynamic color based on wait time */}
+          <div className={`${
+            (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'kpi-card-red glow-red' : 
+            (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'kpi-card-amber' : 'kpi-card-emerald glow-emerald'
+          } hover:border-white/10`}>
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'bg-red-500/20' : 
+                (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'bg-amber-500/20' : 'bg-emerald-500/20'
+              }`}>
+                <Clock className={`h-5 w-5 ${
+                  (metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'text-red-400' : 
+                  (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'text-amber-400' : 'text-emerald-400'
+                }`} />
+              </div>
+              <span className="text-xs text-gray-400">Time in queue</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{metrics?.avg_queue_wait_time_display || '0m'}</p>
+            <p className="text-xs text-gray-500 mt-1">Avg Queue Wait</p>
+            <SparklineBars 
+              data={[80, 70, 65, 55, 50, 45, 40]} 
+              color={(metrics?.avg_queue_wait_time_seconds || 0) > 86400 ? 'red' : (metrics?.avg_queue_wait_time_seconds || 0) > 3600 ? 'amber' : 'emerald'} 
+            />
+          </div>
                 </div>
 
         {/* Executive Training Insights - Only show for Executive persona */}
