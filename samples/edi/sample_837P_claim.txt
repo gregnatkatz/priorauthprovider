@@ -31,7 +31,7 @@ IEA*1*000000001~
 NOTES:
 - This is a sample 837P (Professional) claim for Keytruda (J9271) infusion
 - Patient: John Smith, DOB 03/15/1955
-- Provider: AdventHealth Orlando
+- Provider: ContosoHealth Orlando
 - Payer: BCBS FL
 - Billed Amount: $45,000
 - Diagnosis: C7989 (Secondary malignant neoplasm), Z8546 (Personal history of malignant neoplasm)

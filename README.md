@@ -36,7 +36,7 @@ Visual flow from Submitted ($12.4M) through Contractual adjustments (-$2.1M), De
 **90-Day Cash Forecast:**
 Area chart with confidence bands showing Expected: $29.4M with range $26.8M - $32.1M at 85% confidence.
 
-**Payer Churn Trends (AdventHealth Payers):**
+**Payer Churn Trends (ContosoHealth Payers):**
 | Payer | Current Churn | Trend | Forecast |
 |-------|---------------|-------|----------|
 | Medicare | 8% | Improving | 7.5% |
@@ -120,9 +120,9 @@ The platform uses 30 AI agents with diversified Azure OpenAI models for comprehe
 | Executive Summary Generator | o3 | Generates executive briefings |
 | Trend Anomaly Detector | DeepSeek-V3 | Detects unusual patterns |
 
-### High-Denial CPT Codes (AdventHealth Focus)
+### High-Denial CPT Codes (ContosoHealth Focus)
 
-The platform includes realistic high-denial scenarios based on AdventHealth's actual payer mix:
+The platform includes realistic high-denial scenarios based on ContosoHealth's actual payer mix:
 
 | CPT Code | Description | Avg Denial Rate | Avg Amount | Primary Payers |
 |----------|-------------|-----------------|------------|----------------|
@@ -212,7 +212,7 @@ backend/
 │   ├── models.py         # SQLAlchemy models (star schema + CFO tables)
 │   ├── schemas.py        # Pydantic schemas
 │   ├── database.py       # Database connection with WAL mode
-│   ├── seed_data.py      # Synthetic data generator (AdventHealth payers)
+│   ├── seed_data.py      # Synthetic data generator (ContosoHealth payers)
 │   └── services/
 │       ├── data_service.py   # Data abstraction layer
 │       ├── ai_agents.py      # 30 AI agents with Azure OpenAI
@@ -237,7 +237,7 @@ dashboard/
 
 **Dimension Tables:**
 - dim_patient (500 patients with SDOH scores)
-- dim_payer (6 AdventHealth payers: Medicare, BCBS FL, United, Aetna, Cigna, Humana)
+- dim_payer (6 ContosoHealth payers: Medicare, BCBS FL, United, Aetna, Cigna, Humana)
 - dim_facility (10 facilities)
 - dim_physician (50 physicians)
 - dim_procedure (100 procedures including high-denial CPT codes)
@@ -479,7 +479,7 @@ Simulates polling Change Healthcare API for new 835 remittance data. Generates r
 ```bash
 POST /api/clearinghouse/simulate/batch?days=7
 ```
-Generates N days of synthetic clearinghouse traffic based on AdventHealth's payer mix.
+Generates N days of synthetic clearinghouse traffic based on ContosoHealth's payer mix.
 
 **Submit 837 Claim:**
 ```bash
@@ -514,20 +514,20 @@ POST /oauth/token
 GET /claims/v1/remittance
 ```
 
-### AdventHealth Facility Configuration
+### ContosoHealth Facility Configuration
 
 | Facility | NPI | Volume Weight | Primary Clearinghouse |
 |----------|-----|---------------|----------------------|
-| AdventHealth Orlando | 1234567890 | 25% | Availity |
-| AdventHealth Tampa | 1234567891 | 15% | Availity |
-| AdventHealth Celebration | 1234567892 | 12% | Availity |
-| AdventHealth Altamonte Springs | 1234567893 | 10% | Availity |
-| AdventHealth Daytona Beach | 1234567894 | 10% | Change Healthcare |
-| AdventHealth Winter Park | 1234567895 | 8% | Availity |
-| AdventHealth Fish Memorial | 1234567896 | 8% | Change Healthcare |
-| AdventHealth Waterman | 1234567897 | 6% | Availity |
-| AdventHealth Ocala | 1234567898 | 4% | Change Healthcare |
-| AdventHealth Palm Coast | 1234567899 | 2% | Availity |
+| ContosoHealth Orlando | 1234567890 | 25% | Availity |
+| ContosoHealth Tampa | 1234567891 | 15% | Availity |
+| ContosoHealth Celebration | 1234567892 | 12% | Availity |
+| ContosoHealth Altamonte Springs | 1234567893 | 10% | Availity |
+| ContosoHealth Daytona Beach | 1234567894 | 10% | Change Healthcare |
+| ContosoHealth Winter Park | 1234567895 | 8% | Availity |
+| ContosoHealth Fish Memorial | 1234567896 | 8% | Change Healthcare |
+| ContosoHealth Waterman | 1234567897 | 6% | Availity |
+| ContosoHealth Ocala | 1234567898 | 4% | Change Healthcare |
+| ContosoHealth Palm Coast | 1234567899 | 2% | Availity |
 
 ### CARC Code Distribution by Category
 
@@ -551,7 +551,7 @@ GET /claims/v1/remittance
 | Week 4 | End-to-end testing with live data |
 | Week 5 | Production cutover, monitoring setup |
 
-### What AdventHealth Needs to Provide
+### What ContosoHealth Needs to Provide
 
 1. **Availity Credentials**: SFTP username/password, trading partner ID
 2. **Optum API Access**: Client ID/secret, API subscription
@@ -560,9 +560,9 @@ GET /claims/v1/remittance
 5. **Tax ID (TIN)**: Organization tax identification number
 6. **HIPAA BAA**: Business Associate Agreement for PHI handling
 
-## AdventHealth Payer Configuration
+## ContosoHealth Payer Configuration
 
-The platform is configured with AdventHealth's primary payer mix:
+The platform is configured with ContosoHealth's primary payer mix:
 
 | Payer | Type | Clearinghouse | Avg Days to Pay | Denial Rate | Base Yield |
 |-------|------|---------------|-----------------|-------------|------------|

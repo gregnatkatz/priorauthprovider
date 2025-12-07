@@ -34,7 +34,7 @@ NOTES:
 - Contractual Adjustment (CO-45): $560
 - Patient Deductible (PR-1): $280
 - Patient: Robert Williams
-- Provider: AdventHealth Celebration
+- Provider: ContosoHealth Celebration
 - Payer: United Healthcare
 
 CHURN ANALYSIS:

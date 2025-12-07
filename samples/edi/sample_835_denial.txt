@@ -33,7 +33,7 @@ NOTES:
 - CARC Code: 197 (Precertification/authorization/notification absent)
 - Denial Category: Prior Authorization
 - Patient: Mary Johnson
-- Provider: AdventHealth Tampa
+- Provider: ContosoHealth Tampa
 - Payer: Aetna
 
 DENIAL ANALYSIS:

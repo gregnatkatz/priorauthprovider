@@ -89,7 +89,7 @@ class DimPayer(Base):
 
 
 class DimFacility(Base):
-    """Healthcare facility dimension (AdventHealth hospitals)"""
+    """Healthcare facility dimension (ContosoHealth hospitals)"""
     __tablename__ = "dim_facility"
     
     facility_id = Column(Integer, primary_key=True, autoincrement=True)

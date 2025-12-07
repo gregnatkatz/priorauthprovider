@@ -1,6 +1,6 @@
 # Data Mapping: POC to Production Integration
 
-This document maps the POC database tables to production data sources for AdventHealth's phased integration approach. The POC uses a star schema designed for easy migration to Fabric HDS when production integration begins.
+This document maps the POC database tables to production data sources for ContosoHealth's phased integration approach. The POC uses a star schema designed for easy migration to Fabric HDS when production integration begins.
 
 ## Overview
 
