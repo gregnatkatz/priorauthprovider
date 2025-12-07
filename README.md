@@ -17,13 +17,14 @@ This POC is designed around 835 ERA (Electronic Remittance Advice) data - the st
 | **Appeal Success Rate** | 2.2x higher (67.5% vs 30.6%) |
 | **Staff Satisfaction** | 2.15x higher (4.3/5 vs 2.0/5) |
 | **Forecast Accuracy** | 94.2% prediction accuracy |
-| **Agent Coverage** | 40 specialized AI agents |
+| **Agent Coverage** | 42 specialized AI agents |
 | **Test Pass Rate** | 93.7% (1873/2000 comprehensive tests) |
 
 **Key Capabilities:**
 - 🔍 **Early Warning System**: 277CA/277 status intelligence detects issues before denials hit 835
 - 📊 **CFO Dashboard**: 8 executive KPIs with 90-day cash forecasting
-- 🤖 **40 AI Agents**: Diversified model allocation (o3, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, DeepSeek-V3)
+- 🤖 **42 AI Agents**: Diversified model allocation (o3, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, DeepSeek-V3)
+- 📚 **Payer Policy RAG**: ChromaDB-powered semantic search across FL payer policies
 - ⚡ **Intelligent Routing**: Automatic model selection based on task complexity
 - ✅ **Audit & Validation**: Out-of-band consistency checks across all agent outputs
 
@@ -94,9 +95,9 @@ Real-time tracking of claims at risk of denial with AI-predicted risk scores and
 **Reconciliation Status:**
 Track matched, unmatched, and partially matched claims between 837 submissions and 835 remittances.
 
-### 40 AI Agents (18 Denial + 12 CFO + 8 Status + 2 System)
+### 42 AI Agents (18 Denial + 12 CFO + 8 Status + 2 System + 2 RAG)
 
-The platform uses 40 AI agents with diversified Azure OpenAI models for comprehensive analysis, financial forecasting, status intelligence, and multi-model verification.
+The platform uses 42 AI agents with diversified Azure OpenAI models for comprehensive analysis, financial forecasting, status intelligence, policy validation, and multi-model verification.
 
 **18 Denial Management Agents:**
 
@@ -157,6 +158,68 @@ The platform uses 40 AI agents with diversified Azure OpenAI models for comprehe
 |-------|-------|---------|
 | Audit Agent | o3 | Out-of-band consistency validation |
 | Health Check Agent | gpt-4.1-mini | Monitors agent health/performance |
+
+**2 RAG & Policy Agents:**
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| PolicyRAGAgent | gpt-4.1 | Retrieves and validates claims against payer policies |
+| PolicyScraperAgent | gpt-4.1 | Weekly automated scraping of FL payer policy portals |
+
+### 📚 Payer Policy RAG System (ChromaDB)
+
+The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system for FL payer policies using ChromaDB as the vector store. This enables semantic search across payer policy documents for intelligent claim validation.
+
+**Supported FL Payers:**
+
+| Payer | Policy Types | Documents |
+|-------|--------------|-----------|
+| **Florida Blue (BCBS FL)** | Prior Auth, Medical Policy, Appeals | 3 |
+| **Humana Florida** | Prior Auth, Step Therapy, Coverage | 2 |
+| **Florida Medicaid (AHCA)** | Coverage Policy, Fee Schedule | 2 |
+| **Aetna Florida** | Clinical Policy Bulletin, Utilization Review, Appeals | 3 |
+
+**Policy Document Types:**
+- `prior_auth` - Prior authorization requirements by procedure
+- `medical_policy` - Medical necessity criteria and coverage rules
+- `appeal_procedures` - Appeal timelines, documentation requirements
+- `step_therapy` - Step therapy and formulary requirements
+- `coverage_policy` - State-specific coverage rules
+- `fee_schedule` - Reimbursement rates and billing guidelines
+- `clinical_policy_bulletin` - Clinical criteria for specific procedures
+- `utilization_review` - Utilization management guidelines
+
+**RAG Features:**
+- 🔍 **Semantic Search**: Query policies using natural language
+- 🏥 **Payer Filtering**: Search within specific payer's policies
+- 📋 **Policy Type Filtering**: Filter by prior auth, appeals, etc.
+- 📅 **Version Tracking**: Track policy versions and effective dates
+- 🔄 **Change Detection**: Detect policy updates via content hashing
+- 🤖 **Weekly Scraping**: Automated policy updates via PolicyScraperAgent
+
+**API Endpoints:**
+- `GET /api/policies/search` - Semantic search across policies
+- `GET /api/policies/payers` - List FL payers with policy counts
+- `GET /api/policies/{policy_number}` - Get policy details
+- `POST /api/policies/validate-claim` - Validate claim against policies
+- `POST /api/policies/scrape` - Trigger policy scraping
+- `GET /api/policies/stats` - RAG system statistics
+
+**Example Usage:**
+```python
+from app.services.policy_rag import PayerPolicyRAG
+
+rag = PayerPolicyRAG()
+
+# Semantic search
+results = rag.search_policies("prior authorization knee replacement", n_results=3)
+
+# Payer-specific search
+results = rag.search_policies("appeal process", payer_id="FL_BLUE")
+
+# Policy type filter
+results = rag.search_policies("MRI imaging", policy_type="prior_auth")
+```
 
 ### High-Denial CPT Codes (ContosoHealth Focus)
 
