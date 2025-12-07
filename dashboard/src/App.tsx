@@ -36,14 +36,14 @@ const PERSONA_CONFIG = {
     icon: Users,
     description: 'Operations focus',
     defaultTab: 'denials',
-    visibleTabs: ['dashboard', 'denials', 'ai', 'lifecycle', 'payer']
+    visibleTabs: ['dashboard', 'denials', 'ai', 'lifecycle', 'payer', 'policy']
   },
   executive: {
     name: 'Executive',
     icon: Briefcase,
     description: 'Financial focus',
     defaultTab: 'cfo',
-    visibleTabs: ['cfo', 'dashboard', 'denials', 'ai', 'lifecycle', 'learning', 'payer']
+    visibleTabs: ['cfo', 'dashboard', 'denials', 'ai', 'lifecycle', 'learning', 'payer', 'policy']
   }
 }
 import './App.css'
@@ -1020,26 +1020,55 @@ function App() {
       setReEvalResult(null)
       setReEvalCurrentAgent('Connecting to Azure AI agents...')
 
-      // Define all 18 agents with insights about what changes could improve approval
+      // Define all 42 AI agents with insights about what changes could improve approval
       const agents = [
-        { name: "SDOH Scorer", insight: "Analyzing social determinants of health factors...", category: "Patient-Centric" },
-        { name: "Care Gap Detector", insight: "Checking for gaps in care documentation...", category: "Patient-Centric" },
-        { name: "Clinical Urgency", insight: "Evaluating clinical urgency indicators...", category: "Patient-Centric" },
-        { name: "Financial Value", insight: "Calculating financial impact and ROI...", category: "Patient-Centric" },
-        { name: "Recovery Predictor", insight: "Predicting appeal success probability...", category: "Revenue Intelligence" },
-        { name: "P2P Optimizer", insight: "Identifying peer-to-peer review opportunities...", category: "Revenue Intelligence" },
-        { name: "Queue Wait Time", insight: "Optimizing submission timing...", category: "Revenue Intelligence" },
-                { name: "Denial Risk Predictor", insight: "Assessing denial risk factors...", category: "Denial Prevention" },
-                { name: "Doc Completeness", insight: "Scanning for missing documentation...", category: "Denial Prevention" },
-                { name: "Policy Monitor", insight: "Checking payer policy compliance...", category: "Denial Prevention" },
-        { name: "Root Cause Analyzer", insight: "Identifying root cause of denial...", category: "Learning" },
-        { name: "Staff Feedback Processor", insight: "Incorporating staff feedback patterns...", category: "Learning" },
-        { name: "Safety Validator", insight: "Validating clinical safety requirements...", category: "Validation" },
-        { name: "Consensus Checker", insight: "Cross-checking agent recommendations...", category: "Validation" },
-        { name: "Policy Match Grader", insight: "Grading policy criteria alignment...", category: "Validation" },
-        { name: "Viability Scorer", insight: "Scoring overall approval viability...", category: "Validation" },
-        { name: "Eligibility Verifier", insight: "Verifying patient eligibility status...", category: "Validation" },
-        { name: "Follow-up Scheduler", insight: "Planning optimal follow-up actions...", category: "Validation" },
+        // Denial Management Agents (18)
+        { name: "SDOH Scorer", insight: "Analyzing social determinants of health factors...", category: "Patient-Centric", model: "gpt-4.1" },
+        { name: "Care Gap Detector", insight: "Checking for gaps in care documentation...", category: "Patient-Centric", model: "gpt-4.1" },
+        { name: "Clinical Urgency", insight: "Evaluating clinical urgency indicators...", category: "Patient-Centric", model: "gpt-4.1" },
+        { name: "Financial Value", insight: "Calculating financial impact and ROI...", category: "Patient-Centric", model: "gpt-4.1-mini" },
+        { name: "Recovery Predictor", insight: "Predicting appeal success probability...", category: "Revenue Intelligence", model: "o3" },
+        { name: "P2P Optimizer", insight: "Identifying peer-to-peer review opportunities...", category: "Revenue Intelligence", model: "gpt-4.1" },
+        { name: "Queue Wait Time", insight: "Optimizing submission timing...", category: "Revenue Intelligence", model: "gpt-4.1-mini" },
+        { name: "Denial Risk Predictor", insight: "Assessing denial risk factors...", category: "Denial Prevention", model: "o3" },
+        { name: "Doc Completeness", insight: "Scanning for missing documentation...", category: "Denial Prevention", model: "gpt-4.1" },
+        { name: "Policy Monitor", insight: "Checking payer policy compliance...", category: "Denial Prevention", model: "gpt-4.1" },
+        { name: "Root Cause Analyzer", insight: "Identifying root cause of denial...", category: "Learning", model: "o3" },
+        { name: "Staff Feedback Processor", insight: "Incorporating staff feedback patterns...", category: "Learning", model: "gpt-4.1-mini" },
+        { name: "Safety Validator", insight: "Validating clinical safety requirements...", category: "Validation", model: "o1" },
+        { name: "Consensus Checker", insight: "Cross-checking agent recommendations...", category: "Validation", model: "gpt-4.1" },
+        { name: "Policy Match Grader", insight: "Grading policy criteria alignment...", category: "Validation", model: "gpt-4.1" },
+        { name: "Viability Scorer", insight: "Scoring overall approval viability...", category: "Validation", model: "gpt-4.1" },
+        { name: "Eligibility Verifier", insight: "Verifying patient eligibility status...", category: "Validation", model: "gpt-4.1-mini" },
+        { name: "Follow-up Scheduler", insight: "Planning optimal follow-up actions...", category: "Validation", model: "gpt-4.1-nano" },
+        // CFO Intelligence Agents (12)
+        { name: "Revenue Forecaster", insight: "Forecasting revenue impact from denials...", category: "CFO Intelligence", model: "o3" },
+        { name: "Cash Flow Analyzer", insight: "Analyzing cash flow implications...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Budget Variance Detector", insight: "Detecting budget variances from denials...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Payer Mix Optimizer", insight: "Optimizing payer mix strategy...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Write-off Predictor", insight: "Predicting potential write-offs...", category: "CFO Intelligence", model: "gpt-4.1-mini" },
+        { name: "Collection Probability", insight: "Calculating collection probability...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "AR Aging Analyzer", insight: "Analyzing accounts receivable aging...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Cost-to-Collect", insight: "Calculating cost-to-collect ratios...", category: "CFO Intelligence", model: "gpt-4.1-mini" },
+        { name: "Net Revenue Impact", insight: "Calculating net revenue impact...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Denial Rate Trend", insight: "Analyzing denial rate trends...", category: "CFO Intelligence", model: "gpt-4.1-mini" },
+        { name: "Appeal ROI Calculator", insight: "Calculating appeal return on investment...", category: "CFO Intelligence", model: "gpt-4.1" },
+        { name: "Financial Risk Scorer", insight: "Scoring overall financial risk...", category: "CFO Intelligence", model: "o3" },
+        // Status Intelligence Agents (8)
+        { name: "Front-End Rejection Analyzer", insight: "Analyzing 277CA front-end rejections...", category: "Status Intelligence", model: "o3" },
+        { name: "Appeal Deadline Risk", insight: "Assessing appeal deadline urgency...", category: "Status Intelligence", model: "o3" },
+        { name: "Pending Claim Risk", insight: "Scoring risk for pending claims...", category: "Status Intelligence", model: "gpt-4.1" },
+        { name: "Aging Trend Forecaster", insight: "Forecasting A/R aging trends...", category: "Status Intelligence", model: "gpt-4.1" },
+        { name: "Payer SLA Monitor", insight: "Monitoring payer SLA compliance...", category: "Status Intelligence", model: "gpt-4.1-mini" },
+        { name: "COB Coordination", insight: "Analyzing coordination of benefits...", category: "Status Intelligence", model: "gpt-4.1-mini" },
+        { name: "Status Pattern Detector", insight: "Detecting status flow anomalies...", category: "Status Intelligence", model: "deepseek" },
+        { name: "Status Summarizer", insight: "Summarizing status intelligence...", category: "Status Intelligence", model: "gpt-4.1-nano" },
+        // System Agents (2)
+        { name: "Audit Agent", insight: "Validating cross-agent consistency...", category: "System", model: "o3" },
+        { name: "Health Check Agent", insight: "Monitoring agent health and performance...", category: "System", model: "gpt-4.1-mini" },
+        // RAG Agents (2)
+        { name: "Policy RAG Agent", insight: "Retrieving relevant payer policies...", category: "RAG Intelligence", model: "gpt-4.1" },
+        { name: "Policy Scraper Agent", insight: "Updating payer policy database...", category: "RAG Intelligence", model: "gpt-4.1-mini" },
       ]
 
       try {
@@ -2423,12 +2452,12 @@ function App() {
               </CardContent>
             </Card>
 
-            {/* Re-Evaluate with 18 AI Agents */}
+            {/* Re-Evaluate with 42 AI Agents */}
             <Card className={`bg-gradient-to-r from-purple-900/30 to-pink-900/30 ${changesNeedReEval ? 'border-amber-500 border-2 animate-pulse' : 'border-purple-500/30'}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Shield className="h-4 w-4 text-purple-400" />
-                  Re-Evaluate with 18 AI Agents
+                  Re-Evaluate with 42 AI Agents
                   {changesNeedReEval && (
                     <Badge className="bg-amber-600 text-xs ml-2">Action Needed</Badge>
                   )}
@@ -2469,6 +2498,11 @@ function App() {
                         }`}>
                           <CheckCircle className={`h-3 w-3 ${step.category === 'Validation' ? 'text-purple-400' : 'text-emerald-400'}`} />
                           <span>{step.agent_name}</span>
+                          {step.model && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-slate-700/50 border-slate-600">
+                              {step.model}
+                            </Badge>
+                          )}
                           <span className="text-slate-400 text-[10px] ml-auto">{step.insight}</span>
                         </div>
                       ))}
@@ -4204,6 +4238,173 @@ function App() {
     </div>
   )
 
+  const renderPolicySearch = () => {
+    const policyPayers = [
+      { id: 'FL_BLUE', name: 'Florida Blue', policies: 3, type: 'Commercial' },
+      { id: 'HUMANA_FL', name: 'Humana Florida', policies: 3, type: 'Medicare Advantage' },
+      { id: 'FL_MEDICAID', name: 'Florida Medicaid', policies: 3, type: 'Medicaid' },
+      { id: 'AETNA_FL', name: 'Aetna Florida', policies: 3, type: 'Commercial' },
+      { id: 'MEDICARE', name: 'Medicare (CMS)', policies: 3, type: 'Government' },
+      { id: 'UNITED', name: 'United Healthcare', policies: 3, type: 'Commercial' },
+      { id: 'CIGNA', name: 'Cigna', policies: 2, type: 'Commercial' },
+      { id: 'TRICARE', name: 'TRICARE', policies: 2, type: 'Government' },
+      { id: 'ANTHEM', name: 'Anthem/BCBS', policies: 3, type: 'Commercial' },
+    ]
+
+    const policyTypes = [
+      { type: 'medical_policy', label: 'Medical Policies', count: 9 },
+      { type: 'prior_auth', label: 'Prior Authorization', count: 9 },
+      { type: 'appeal_procedures', label: 'Appeal Procedures', count: 7 },
+    ]
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Search className="h-6 w-6 text-blue-500" />
+              Payer Policy Search
+            </h2>
+            <p className="text-muted-foreground">Search across 25 comprehensive policy documents from 9 major US payers</p>
+          </div>
+          <div className="flex gap-2">
+            <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-3 py-1">
+              <Brain className="h-3 w-3 mr-1" />
+              RAG-Powered
+            </Badge>
+            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-3 py-1">
+              ChromaDB
+            </Badge>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Semantic Policy Search
+            </CardTitle>
+            <CardDescription>
+              Search for coverage criteria, prior authorization requirements, appeal procedures, and more
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search policies... (e.g., 'knee replacement prior authorization', 'MRI coverage criteria')"
+                  className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Search
+              </button>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Badge variant="outline" className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">All Payers</Badge>
+              <Badge variant="outline" className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">Prior Auth</Badge>
+              <Badge variant="outline" className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">Medical Policy</Badge>
+              <Badge variant="outline" className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">Appeals</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Supported Payers ({policyPayers.length})
+              </CardTitle>
+              <CardDescription>Comprehensive policy coverage for major US health insurers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {policyPayers.map((payer) => (
+                  <div
+                    key={payer.id}
+                    className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer"
+                  >
+                    <div className="font-medium">{payer.name}</div>
+                    <div className="text-sm text-muted-foreground">{payer.type}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Badge variant="secondary">{payer.policies} policies</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Policy Types
+              </CardTitle>
+              <CardDescription>Documents by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {policyTypes.map((pt) => (
+                  <div key={pt.type} className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{pt.label}</span>
+                    <Badge>{pt.count}</Badge>
+                  </div>
+                ))}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between font-semibold">
+                    <span>Total Policies</span>
+                    <Badge className="bg-blue-500 text-white">25</Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border-slate-800/50">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+              <Brain className="h-5 w-5 text-cyan-400" />
+              AI-Powered Policy Intelligence
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              How the RAG system enhances claim validation
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                <div className="text-cyan-400 font-semibold mb-2">PolicyRAGAgent (RAG-001)</div>
+                <p className="text-sm text-slate-300">
+                  Validates claims against payer-specific policies using semantic search. Returns compliance scores (0-100) with specific policy citations.
+                </p>
+                <Badge className="mt-2 bg-cyan-500/20 text-cyan-300">gpt-4.1</Badge>
+              </div>
+              <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                <div className="text-emerald-400 font-semibold mb-2">PolicyScraperAgent (SYS-003)</div>
+                <p className="text-sm text-slate-300">
+                  Automated weekly scraping of payer portals with AI-powered parsing, change detection, and version tracking.
+                </p>
+                <Badge className="mt-2 bg-emerald-500/20 text-emerald-300">gpt-4.1-mini</Badge>
+              </div>
+              <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                <div className="text-violet-400 font-semibold mb-2">ChromaDB Vector Store</div>
+                <p className="text-sm text-slate-300">
+                  Semantic embeddings enable natural language policy search. Find relevant coverage criteria instantly.
+                </p>
+                <Badge className="mt-2 bg-violet-500/20 text-violet-300">sentence-transformers</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // CFO Dashboard KPI Card with sparkline bars (new design)
   const CFOKPICard = ({ title, value, trend, trendValue, subtitle, alert, trendData, color = 'blue', icon }: {
     title: string;
@@ -5280,6 +5481,14 @@ function App() {
               </div>
                         <div className="flex items-center gap-4">
                           <Badge variant="outline" className="text-xs">POC - Synthetic Data</Badge>
+                          <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-semibold px-3 py-1">
+                            <Brain className="h-3 w-3 mr-1 inline" />
+                            42 AI Agents
+                          </Badge>
+                          <Badge className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-semibold px-3 py-1">
+                            <Building2 className="h-3 w-3 mr-1 inline" />
+                            9 Payers
+                          </Badge>
                           <Select value={persona} onValueChange={(v: Persona) => {
                             setPersona(v)
                             setActiveTab(PERSONA_CONFIG[v].defaultTab)
@@ -5392,6 +5601,12 @@ function App() {
                           Payer
                         </TabsTrigger>
                       )}
+                      {PERSONA_CONFIG[persona].visibleTabs.includes('policy') && (
+                        <TabsTrigger value="policy" className="flex items-center gap-2">
+                          <Search className="h-4 w-4" />
+                          Policy Search
+                        </TabsTrigger>
+                      )}
                     </TabsList>
 
           <TabsContent value="cfo">{renderCFODashboard()}</TabsContent>
@@ -5402,6 +5617,7 @@ function App() {
           <TabsContent value="lifecycle">{renderLifecycle()}</TabsContent>
           <TabsContent value="learning">{renderLearning()}</TabsContent>
           <TabsContent value="payer">{renderPayer()}</TabsContent>
+          <TabsContent value="policy">{renderPolicySearch()}</TabsContent>
         </Tabs>
       </main>
     </div>
