@@ -344,8 +344,8 @@ Executive financial intelligence dashboard with 8 KPI cards, churn waterfall, de
 ![CFO Dashboard](docs/screenshots/08_cfo_dashboard.png)
 
 ### Operations Dashboard
-Main dashboard showing denial metrics, category distribution, payer analysis, and AI impact summary.
-![Dashboard](docs/screenshots/01_dashboard.png)
+Main dashboard showing denial metrics with gradient KPI cards, sparkline bars, category distribution, payer analysis, and AI impact summary. Features the new visual design with IBM Plex Sans font and dark theme.
+![Dashboard](docs/screenshots/01_dashboard_new.png)
 
 ### Denials Tab
 Denials list with status filters, search, and AI-powered recommendations.
