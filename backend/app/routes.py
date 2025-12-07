@@ -3151,7 +3151,7 @@ async def get_clearinghouse_status(db: AsyncSession = Depends(get_db)):
             "last_poll": datetime.now().isoformat(),
             "files_pending": random.randint(0, 3) if mode == "simulation" else 0,
         },
-        "note": "Simulation mode generates realistic 835 traffic based on AdventHealth's payer mix"
+        "note": "Simulation mode generates realistic 835 traffic based on ContosoHealth's payer mix"
     }
 
 
@@ -3259,7 +3259,7 @@ async def simulate_batch_traffic(
 ):
     """
     Generate N days of synthetic clearinghouse traffic.
-    Simulates realistic 837 submissions and 835 responses based on AdventHealth's payer mix.
+    Simulates realistic 837 submissions and 835 responses based on ContosoHealth's payer mix.
     
     Daily volume: 500-800 837 submissions, 400-700 835 responses (lagged 3-14 days)
     """
@@ -3300,7 +3300,7 @@ async def simulate_batch_traffic(
             "availity": int(total_claims * 0.58),  # FL Blue + Humana + Cigna + Medicare = 58%
             "change_healthcare": int(total_claims * 0.42)  # UHC + Aetna + Anthem + Medicaid = 42%
         },
-        "note": "Simulated traffic based on AdventHealth's payer mix and denial patterns"
+        "note": "Simulated traffic based on ContosoHealth's payer mix and denial patterns"
     }
 
 

@@ -71,10 +71,10 @@ RARC_CODES = [
     {"code": "N657", "description": "This should be billed with the appropriate code for the service/supply provided"},
 ]
 
-# Payer data - AdventHealth's primary payers with clearinghouse routing
+# Payer data - ContosoHealth's primary payers with clearinghouse routing
 # From Clearinghouse Addendum: Availity (FL Blue, Humana, Cigna, Medicare) and Optum/CHC (UHC, Aetna, Anthem, Medicaid)
 PAYERS = [
-    # Primary AdventHealth Payers with clearinghouse routing
+    # Primary ContosoHealth Payers with clearinghouse routing
     {"name": "Florida Blue", "type": "Commercial", "denial_rate": 0.18, "appeal_success": 0.57, "days_to_decision": 13,
      "clearinghouse": "availity", "volume_pct": 0.22, "avg_days_to_pay": 21, "base_yield": 0.78, "top_denial_carc": "197"},
     {"name": "UnitedHealthcare", "type": "Commercial", "denial_rate": 0.24, "appeal_success": 0.52, "days_to_decision": 14,
@@ -136,32 +136,32 @@ PAYER_PROCEDURE_DENIAL_RATES = {
     }
 }
 
-# AdventHealth facilities with NPIs and volume weights (from Clearinghouse Addendum)
+# ContosoHealth facilities with NPIs and volume weights (from Clearinghouse Addendum)
 FACILITIES = [
-    {"name": "AdventHealth Orlando", "type": "Hospital", "beds": 1368, "city": "Orlando", "state": "FL",
+    {"name": "ContosoHealth Orlando", "type": "Hospital", "beds": 1368, "city": "Orlando", "state": "FL",
      "npi": "1234567890", "volume_weight": 0.25, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Tampa", "type": "Hospital", "beds": 542, "city": "Tampa", "state": "FL",
+    {"name": "ContosoHealth Tampa", "type": "Hospital", "beds": 542, "city": "Tampa", "state": "FL",
      "npi": "1234567891", "volume_weight": 0.15, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Celebration", "type": "Hospital", "beds": 237, "city": "Celebration", "state": "FL",
+    {"name": "ContosoHealth Celebration", "type": "Hospital", "beds": 237, "city": "Celebration", "state": "FL",
      "npi": "1234567892", "volume_weight": 0.12, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Altamonte Springs", "type": "Hospital", "beds": 398, "city": "Altamonte Springs", "state": "FL",
+    {"name": "ContosoHealth Altamonte Springs", "type": "Hospital", "beds": 398, "city": "Altamonte Springs", "state": "FL",
      "npi": "1234567893", "volume_weight": 0.10, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Daytona Beach", "type": "Hospital", "beds": 323, "city": "Daytona Beach", "state": "FL",
+    {"name": "ContosoHealth Daytona Beach", "type": "Hospital", "beds": 323, "city": "Daytona Beach", "state": "FL",
      "npi": "1234567894", "volume_weight": 0.10, "primary_clearinghouse": "change_healthcare"},
-    {"name": "AdventHealth Winter Park", "type": "Hospital", "beds": 305, "city": "Winter Park", "state": "FL",
+    {"name": "ContosoHealth Winter Park", "type": "Hospital", "beds": 305, "city": "Winter Park", "state": "FL",
      "npi": "1234567895", "volume_weight": 0.08, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Fish Memorial", "type": "Hospital", "beds": 175, "city": "Orange City", "state": "FL",
+    {"name": "ContosoHealth Fish Memorial", "type": "Hospital", "beds": 175, "city": "Orange City", "state": "FL",
      "npi": "1234567896", "volume_weight": 0.08, "primary_clearinghouse": "change_healthcare"},
-    {"name": "AdventHealth Waterman", "type": "Hospital", "beds": 269, "city": "Tavares", "state": "FL",
+    {"name": "ContosoHealth Waterman", "type": "Hospital", "beds": 269, "city": "Tavares", "state": "FL",
      "npi": "1234567897", "volume_weight": 0.06, "primary_clearinghouse": "availity"},
-    {"name": "AdventHealth Ocala", "type": "Hospital", "beds": 284, "city": "Ocala", "state": "FL",
+    {"name": "ContosoHealth Ocala", "type": "Hospital", "beds": 284, "city": "Ocala", "state": "FL",
      "npi": "1234567898", "volume_weight": 0.04, "primary_clearinghouse": "change_healthcare"},
-    {"name": "AdventHealth Palm Coast", "type": "Hospital", "beds": 99, "city": "Palm Coast", "state": "FL",
+    {"name": "ContosoHealth Palm Coast", "type": "Hospital", "beds": 99, "city": "Palm Coast", "state": "FL",
      "npi": "1234567899", "volume_weight": 0.02, "primary_clearinghouse": "availity"},
 ]
 
-# High-denial procedures for realistic AdventHealth demo
-# Based on AdventHealth's service mix (55 hospitals, cancer centers, heart institutes, orthopedics)
+# High-denial procedures for realistic ContosoHealth demo
+# Based on ContosoHealth's service mix (55 hospitals, cancer centers, heart institutes, orthopedics)
 HIGH_DENIAL_PROCEDURES = {
     # Imaging (Highest Denial Category)
     "70553": {"name": "MRI Brain w/wo contrast", "avg_billed": 2800, "denial_rate": 0.30, "category": "imaging", "denial_reason": "Pre-cert required, medical necessity"},
@@ -184,7 +184,7 @@ HIGH_DENIAL_PROCEDURES = {
     "J2505": {"name": "Pegfilgrastim (Neulasta)", "avg_billed": 6800, "denial_rate": 0.18, "category": "oncology", "denial_reason": "Medical necessity timing"},
     "J9305": {"name": "Pemetrexed (Alimta)", "avg_billed": 12000, "denial_rate": 0.26, "category": "oncology", "denial_reason": "Line of therapy requirements"},
     
-    # Cardiology (AdventHealth Heart Institute)
+    # Cardiology (ContosoHealth Heart Institute)
     "93458": {"name": "Left Heart Cath w/imaging", "avg_billed": 12000, "denial_rate": 0.22, "category": "cardiology", "denial_reason": "Medical necessity, prior testing"},
     "33361": {"name": "TAVR (Transcatheter Aortic Valve)", "avg_billed": 85000, "denial_rate": 0.30, "category": "cardiology", "denial_reason": "Very high $ - strict PA"},
     "93653": {"name": "EP Study + Ablation", "avg_billed": 18000, "denial_rate": 0.24, "category": "cardiology", "denial_reason": "PA required"},
@@ -225,7 +225,7 @@ PROCEDURES = [
     {"code": "45380", "type": "CPT", "desc": "Colonoscopy with biopsy", "category": "Surgery", "pa_required": False, "medicare_rate": 1800.0, "denial_risk": 0.08},
     {"code": "64483", "type": "CPT", "desc": "Epidural injection", "category": "Pain", "pa_required": True, "medicare_rate": 3200.0, "denial_risk": 0.33},
     
-    # Cardiology (AdventHealth Heart Institute)
+    # Cardiology (ContosoHealth Heart Institute)
     {"code": "93000", "type": "CPT", "desc": "Electrocardiogram, complete", "category": "Cardiology", "pa_required": False, "medicare_rate": 45.0, "denial_risk": 0.05},
     {"code": "93306", "type": "CPT", "desc": "Echocardiography, complete", "category": "Cardiology", "pa_required": False, "medicare_rate": 850.0, "denial_risk": 0.22},
     {"code": "93458", "type": "CPT", "desc": "Left heart catheterization with imaging", "category": "Cardiology", "pa_required": True, "medicare_rate": 12000.0, "denial_risk": 0.22},
@@ -250,7 +250,7 @@ PROCEDURES = [
     {"code": "G0438", "type": "HCPCS", "desc": "Annual wellness visit, initial", "category": "Preventive", "pa_required": False, "medicare_rate": 175.0, "denial_risk": 0.08},
 ]
 
-# Demo scenarios for AdventHealth presentation
+# Demo scenarios for ContosoHealth presentation
 DEMO_SCENARIOS = [
     {
         "name": "Scenario 1: The $45K Oncology Claim",
@@ -477,7 +477,7 @@ def seed_database():
         session.flush()
         print(f"  Created {len(physicians)} physicians")
         
-        # Seed Patients - scaled for AdventHealth's size (~55 hospitals)
+        # Seed Patients - scaled for ContosoHealth's size (~55 hospitals)
         patients = []
         for i in range(2000):
             payer = random.choice(payers)
@@ -511,8 +511,8 @@ def seed_database():
         
         print("\nSeeding fact tables...")
         
-        # Generate 5000 claims for a month of data - scaled for AdventHealth's volume
-        # AdventHealth has ~55 hospitals processing millions of claims annually
+        # Generate 5000 claims for a month of data - scaled for ContosoHealth's volume
+        # ContosoHealth has ~55 hospitals processing millions of claims annually
         # 5000 claims represents approximately 1 week of denial-prone claims
         # Date range: November 2025 (one month of data)
         start_date = date(2025, 11, 1)
@@ -720,7 +720,7 @@ def seed_database():
         session.flush()
         print(f"  Created {len(denials)} denials ({len(denials)/len(claims)*100:.1f}% denial rate)")
         
-        # Create Prior Authorizations (for procedures that require PA) - scaled for AdventHealth
+        # Create Prior Authorizations (for procedures that require PA) - scaled for ContosoHealth
         pa_procedures = [p for p in procedures if p.pa_required]
         for i in range(1000):
             patient = random.choice(patients)
@@ -807,7 +807,7 @@ def seed_database():
         ai_followed_total = 0
         ai_not_followed_total = 0
         
-        for i in range(2500):  # Scaled for AdventHealth's volume - 2500 traces for better analytics
+        for i in range(2500):  # Scaled for ContosoHealth's volume - 2500 traces for better analytics
             denial = random.choice(denials)
             
             # Staff follows AI recommendation ~65% of the time
