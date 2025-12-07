@@ -24,7 +24,7 @@ This POC is designed around 835 ERA (Electronic Remittance Advice) data - the st
 - 🔍 **Early Warning System**: 277CA/277 status intelligence detects issues before denials hit 835
 - 📊 **CFO Dashboard**: 8 executive KPIs with 90-day cash forecasting
 - 🤖 **42 AI Agents**: Diversified model allocation (o3, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, DeepSeek-V3)
-- 📚 **Payer Policy RAG**: ChromaDB-powered semantic search across 8 major US payer policies
+- 📚 **Payer Policy RAG**: ChromaDB-powered semantic search across 9 major US payer policies
 - ⚡ **Intelligent Routing**: Automatic model selection based on task complexity
 - ✅ **Audit & Validation**: Out-of-band consistency checks across all agent outputs
 
@@ -170,7 +170,7 @@ The platform uses 42 AI agents with diversified Azure OpenAI models for comprehe
 
 The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system for major US payer policies using ChromaDB as the vector store. This enables semantic search across payer policy documents for intelligent claim validation.
 
-**Supported Payers (8 Total):**
+**Supported Payers (9 Total):**
 
 | Payer | Policy Types | Documents |
 |-------|--------------|-----------|
@@ -182,6 +182,7 @@ The platform includes a comprehensive RAG (Retrieval-Augmented Generation) syste
 | **United Healthcare** | Orthopedic PA, Drug PA, Appeals Guide | 3 |
 | **Cigna Healthcare** | Advanced Imaging, Surgical PA, Appeals | 3 |
 | **TRICARE (Military)** | Policy Manual, Prior Auth, Appeals | 3 |
+| **Anthem Blue Cross Blue Shield** | Orthopedic Surgery, Prior Auth, Appeals | 3 |
 
 **Policy Document Types:**
 - `prior_auth` - Prior authorization requirements by procedure

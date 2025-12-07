@@ -168,6 +168,18 @@ class PayerPolicyRAG:
                 "appeals_process",
                 "reimbursement_manual"
             ]
+        },
+        "anthem": {
+            "id": "ANTHEM",
+            "name": "Anthem Blue Cross Blue Shield",
+            "portal_url": "https://www.anthem.com/provider",
+            "policy_types": [
+                "medical_policy",
+                "prior_auth",
+                "clinical_guidelines",
+                "coverage_determination",
+                "appeal_procedures"
+            ]
         }
     }
     
@@ -3615,6 +3627,428 @@ TRICARE Website: https://www.tricare.mil/appeals""",
         ),
     ])
     
+    # ==================== ANTHEM BLUE CROSS BLUE SHIELD POLICIES ====================
+    policies.extend([
+        PolicyDocument(
+            payer_id="ANTHEM",
+            payer_name="Anthem Blue Cross Blue Shield",
+            policy_type="medical_policy",
+            policy_title="Medical Policy - Orthopedic Surgery Guidelines",
+            policy_number="ANT-ORTHO-2024-001",
+            effective_date="2024-01-01",
+            content="""ANTHEM BLUE CROSS BLUE SHIELD
+MEDICAL POLICY: ORTHOPEDIC SURGERY GUIDELINES
+Policy Number: ANT-ORTHO-2024-001
+Effective Date: January 1, 2024
+Last Review: December 1, 2024
+
+1. POLICY OVERVIEW
+
+This policy outlines coverage criteria for orthopedic surgical procedures
+including joint replacement, arthroscopy, and spine surgery.
+
+2. TOTAL KNEE ARTHROPLASTY (TKA) - CPT 27447
+
+Coverage Criteria:
+- Diagnosis of severe osteoarthritis (ICD-10: M17.11, M17.12)
+- Kellgren-Lawrence Grade III or IV on radiographic imaging
+- Failed conservative treatment for minimum 3 months:
+  * Physical therapy (minimum 6 weeks)
+  * NSAIDs or analgesics
+  * Intra-articular injections (corticosteroid or hyaluronic acid)
+- Functional impairment documented by validated outcome measure:
+  * WOMAC score ≥ 39
+  * KOOS Pain subscale ≤ 50
+  * Oxford Knee Score ≤ 27
+- BMI < 45 (relative contraindication if > 40)
+- Medical clearance for surgery
+
+Prior Authorization Required: YES
+Authorization Valid: 90 days from approval
+
+3. TOTAL HIP ARTHROPLASTY (THA) - CPT 27130
+
+Coverage Criteria:
+- Diagnosis of severe hip osteoarthritis (ICD-10: M16.11, M16.12)
+- Radiographic evidence of joint space narrowing
+- Failed conservative treatment for minimum 3 months
+- Harris Hip Score < 70
+- Significant functional limitation
+
+Prior Authorization Required: YES
+Authorization Valid: 90 days from approval
+
+4. KNEE ARTHROSCOPY - CPT 29881
+
+Coverage Criteria:
+- Mechanical symptoms (locking, catching)
+- MRI evidence of meniscal tear
+- Failed conservative treatment for 6 weeks
+- Age consideration: Limited coverage for degenerative tears in patients > 50
+
+Prior Authorization Required: NO (for simple meniscectomy)
+Prior Authorization Required: YES (for complex repairs)
+
+5. SPINE SURGERY
+
+Lumbar Fusion (CPT 22612, 22630):
+- Documented instability or spondylolisthesis
+- Failed conservative treatment for 6 months
+- Concordant pain on provocative discography (if applicable)
+- Psychological clearance for chronic pain patients
+
+Cervical Fusion (CPT 22551):
+- Documented radiculopathy or myelopathy
+- MRI correlation with clinical findings
+- Failed conservative treatment for 6-12 weeks
+
+Prior Authorization Required: YES for all spine fusion procedures
+
+6. DOCUMENTATION REQUIREMENTS
+
+Required for All Orthopedic Surgery Requests:
+- Complete history and physical
+- Imaging reports (X-ray, MRI, CT as applicable)
+- Conservative treatment documentation
+- Functional assessment scores
+- Operative plan
+- Medical clearance (if applicable)
+
+7. EXCLUSIONS
+
+Not Covered:
+- Experimental or investigational procedures
+- Cosmetic procedures
+- Procedures not meeting medical necessity criteria
+- Services from non-participating providers without authorization
+
+8. APPEAL PROCESS
+
+If authorization is denied:
+- Level 1: Reconsideration (30 days)
+- Level 2: Internal Appeal (60 days)
+- Level 3: External Review (if applicable)
+
+CONTACT INFORMATION:
+Prior Authorization: 1-800-274-7767
+Provider Services: 1-800-676-2583
+Website: https://www.anthem.com/provider""",
+            source_url="https://www.anthem.com/provider/policies/orthopedic",
+            last_updated=today,
+            version="2024.12.1"
+        ),
+        
+        PolicyDocument(
+            payer_id="ANTHEM",
+            payer_name="Anthem Blue Cross Blue Shield",
+            policy_type="prior_auth",
+            policy_title="Prior Authorization Requirements - Comprehensive Guide",
+            policy_number="ANT-PA-2024-001",
+            effective_date="2024-01-01",
+            content="""ANTHEM BLUE CROSS BLUE SHIELD
+PRIOR AUTHORIZATION REQUIREMENTS
+Policy Number: ANT-PA-2024-001
+Effective Date: January 1, 2024
+Last Review: December 1, 2024
+
+1. OVERVIEW
+
+This document outlines services requiring prior authorization for
+Anthem Blue Cross Blue Shield members. Authorization ensures medical
+necessity and appropriate utilization of healthcare resources.
+
+2. SERVICES REQUIRING PRIOR AUTHORIZATION
+
+A. INPATIENT SERVICES
+   - All elective hospital admissions
+   - Skilled nursing facility admissions
+   - Inpatient rehabilitation
+   - Long-term acute care (LTAC)
+   - Transplant services
+
+B. OUTPATIENT SURGICAL PROCEDURES
+   - Joint replacement (hip, knee, shoulder)
+   - Spine surgery (fusion, decompression)
+   - Bariatric surgery
+   - Cardiac procedures (non-emergent)
+   - Oncology surgery (select procedures)
+
+C. ADVANCED IMAGING
+   - MRI (all body parts)
+   - CT scan (non-emergent)
+   - PET scan
+   - Nuclear medicine studies
+   
+   CPT Codes Requiring Authorization:
+   - 70551-70553 (Brain MRI)
+   - 72141-72158 (Spine MRI)
+   - 73721-73723 (Lower extremity MRI)
+   - 73221-73223 (Upper extremity MRI)
+   - 71250-71275 (Chest CT)
+   - 74176-74178 (Abdomen/Pelvis CT)
+
+D. HIGH-COST DRUGS AND BIOLOGICS
+   - Specialty medications > $1,000/month
+   - Infusion therapies
+   - Oncology drugs
+   - Immunomodulators
+   - Gene therapies
+
+E. DURABLE MEDICAL EQUIPMENT (DME)
+   - Power wheelchairs
+   - Hospital beds
+   - Oxygen equipment
+   - CPAP/BiPAP devices
+   - Prosthetics > $1,000
+
+3. AUTHORIZATION PROCESS
+
+Submission Methods:
+- Online: Availity Portal (preferred)
+- Phone: 1-800-274-7767
+- Fax: 1-800-249-9949
+
+Required Information:
+- Member ID and demographics
+- Provider NPI and contact information
+- Diagnosis codes (ICD-10)
+- Procedure codes (CPT/HCPCS)
+- Clinical documentation supporting medical necessity
+- Facility information (if applicable)
+
+4. TURNAROUND TIMES
+
+Standard Requests:
+- Urgent: 24-72 hours
+- Non-urgent: 5-15 business days
+- Retrospective: 30 business days
+
+Expedited Review:
+Available when standard timeframe could seriously jeopardize
+member's life, health, or ability to regain maximum function.
+
+5. AUTHORIZATION VALIDITY
+
+- Outpatient procedures: 60 days
+- Inpatient admissions: 30 days
+- Imaging: 60 days
+- DME: 90 days
+- Medications: Varies by drug (30-365 days)
+
+6. EMERGENCY SERVICES
+
+Prior authorization is NOT required for:
+- Emergency room visits
+- Emergency admissions
+- Urgent care visits
+- Ambulance services for emergencies
+
+Notification Required:
+- Within 24 hours of emergency admission
+- Within 48 hours for weekend/holiday admissions
+
+7. PEER-TO-PEER REVIEW
+
+If initial request is denied:
+- Request peer-to-peer within 10 business days
+- Schedule through Provider Services: 1-800-676-2583
+- Have clinical documentation ready
+- Discuss case with Anthem Medical Director
+
+8. COMMON DENIAL REASONS
+
+- Incomplete clinical documentation
+- Service not meeting medical necessity criteria
+- Alternative treatments not attempted
+- Out-of-network provider without authorization
+- Experimental/investigational service
+
+CONTACT INFORMATION:
+Prior Authorization Line: 1-800-274-7767
+Provider Services: 1-800-676-2583
+Availity Portal: https://www.availity.com
+Anthem Provider Portal: https://www.anthem.com/provider""",
+            source_url="https://www.anthem.com/provider/prior-authorization",
+            last_updated=today,
+            version="2024.12.1"
+        ),
+        
+        PolicyDocument(
+            payer_id="ANTHEM",
+            payer_name="Anthem Blue Cross Blue Shield",
+            policy_type="appeal_procedures",
+            policy_title="Appeals and Grievances Process",
+            policy_number="ANT-APPEALS-2024-001",
+            effective_date="2024-01-01",
+            content="""ANTHEM BLUE CROSS BLUE SHIELD
+APPEALS AND GRIEVANCES PROCESS
+Policy Number: ANT-APPEALS-2024-001
+Effective Date: January 1, 2024
+Last Review: December 1, 2024
+
+1. OVERVIEW
+
+This document outlines the appeals and grievances process for
+providers and members when a claim is denied or a service is
+not authorized by Anthem Blue Cross Blue Shield.
+
+2. TYPES OF APPEALS
+
+A. PRE-SERVICE APPEALS
+   For denied prior authorization requests before service is rendered.
+   
+   Timeframe to File: 180 days from denial notice
+   Decision Timeframe:
+   - Urgent: 72 hours
+   - Standard: 30 calendar days
+
+B. POST-SERVICE APPEALS
+   For denied claims after service has been rendered.
+   
+   Timeframe to File: 180 days from denial notice
+   Decision Timeframe: 60 calendar days
+
+C. EXPEDITED APPEALS
+   For urgent situations where standard timeframe could seriously
+   jeopardize member's life, health, or ability to regain maximum function.
+   
+   Decision Timeframe: 72 hours
+
+3. APPEAL LEVELS
+
+LEVEL 1: INTERNAL APPEAL (RECONSIDERATION)
+- First level of review
+- Reviewed by clinical staff not involved in original decision
+- Submit additional documentation
+- Decision within 30 days (pre-service) or 60 days (post-service)
+
+LEVEL 2: INTERNAL APPEAL (SECOND LEVEL)
+- If Level 1 upholds denial
+- Reviewed by Medical Director
+- Peer-to-peer available
+- Decision within 30 days
+
+LEVEL 3: EXTERNAL REVIEW
+- For fully-insured members (state-regulated plans)
+- Independent Review Organization (IRO)
+- Binding decision
+- Available after exhausting internal appeals
+
+4. HOW TO FILE AN APPEAL
+
+Written Appeals:
+Anthem Blue Cross Blue Shield
+Appeals Department
+P.O. Box 105568
+Atlanta, GA 30348
+
+Fax: 1-800-249-9949
+
+Online: Availity Portal or Anthem Provider Portal
+
+Required Information:
+- Member name and ID number
+- Provider name and NPI
+- Date of service
+- Claim number (if applicable)
+- Authorization number (if applicable)
+- Reason for appeal
+- Supporting clinical documentation
+
+5. SUPPORTING DOCUMENTATION
+
+Medical Necessity Appeals:
+- Complete medical records
+- Clinical notes from treating physician
+- Test results and imaging reports
+- Treatment history
+- Peer-reviewed literature (if applicable)
+- Letter of medical necessity
+
+Claims Appeals:
+- Itemized bill
+- Medical records
+- Explanation of charges
+- Corrected claim form (if applicable)
+
+6. PEER-TO-PEER REVIEW
+
+Available for:
+- Prior authorization denials
+- Medical necessity denials
+- Concurrent review denials
+
+How to Request:
+- Call Provider Services: 1-800-676-2583
+- Request within 10 business days of denial
+- Schedule convenient time with Medical Director
+- Have all clinical documentation ready
+
+7. COMMON APPEAL SCENARIOS
+
+A. "Not Medically Necessary" Denial
+   Response Strategy:
+   - Provide additional clinical documentation
+   - Reference Anthem medical policy
+   - Include clinical guidelines supporting service
+   - Request peer-to-peer review
+
+B. "Experimental/Investigational" Denial
+   Response Strategy:
+   - Provide peer-reviewed literature
+   - Include FDA approvals
+   - Reference clinical trial data
+   - Cite specialty society guidelines
+
+C. "Prior Authorization Not Obtained" Denial
+   Response Strategy:
+   - Document emergency circumstances
+   - Show notification attempt
+   - Request retrospective authorization
+   - Provide clinical justification
+
+D. "Out-of-Network" Denial
+   Response Strategy:
+   - Document network inadequacy
+   - Show no in-network provider available
+   - Request single case agreement
+   - Provide member consent documentation
+
+8. APPEAL RIGHTS
+
+Providers and members have the right to:
+- Appeal any adverse benefit determination
+- Receive written explanation of denial
+- Review case file and relevant documents
+- Submit additional information
+- Request expedited review when appropriate
+- External review (for eligible plans)
+
+9. GRIEVANCES
+
+For complaints about:
+- Quality of care
+- Access to services
+- Provider behavior
+- Administrative issues
+
+Submit to:
+Anthem Member Services
+P.O. Box 105187
+Atlanta, GA 30348
+Phone: 1-800-274-7767
+
+CONTACT INFORMATION:
+Appeals Department: 1-800-274-7767
+Provider Services: 1-800-676-2583
+Fax: 1-800-249-9949
+Website: https://www.anthem.com/provider/appeals""",
+            source_url="https://www.anthem.com/provider/appeals",
+            last_updated=today,
+            version="2024.12.1"
+        ),
+    ])
+    
     return policies
 
 
@@ -3622,8 +4056,8 @@ def initialize_policy_database(rag: PayerPolicyRAG) -> Dict[str, Any]:
     """
     Initialize the policy database with comprehensive payer policies for all major payers.
     
-    Loads policies for 8 payers: Florida Blue, Humana FL, Florida Medicaid, Aetna FL,
-    Medicare (CMS), United Healthcare, Cigna, and TRICARE.
+    Loads policies for 9 payers: Florida Blue, Humana FL, Florida Medicaid, Aetna FL,
+    Medicare (CMS), United Healthcare, Cigna, TRICARE, and Anthem/BCBS.
     
     Returns statistics about the initialization.
     """
