@@ -299,11 +299,14 @@ function App() {
     const [reconciliationData, setReconciliationData] = useState<any>(null)
     const [lifecycleLoading, setLifecycleLoading] = useState(false)
     
-    // Clearinghouse state
-    const [clearinghouseStatus, setClearinghouseStatus] = useState<any>(null)
-    const [clearinghouseLogs, setClearinghouseLogs] = useState<any[]>([])
-    const [pollingAvaility, setPollingAvaility] = useState(false)
-    const [pollingChange, setPollingChange] = useState(false)
+        // Clearinghouse state
+        const [clearinghouseStatus, setClearinghouseStatus] = useState<any>(null)
+        const [clearinghouseLogs, setClearinghouseLogs] = useState<any[]>([])
+        const [pollingAvaility, setPollingAvaility] = useState(false)
+        const [pollingChange, setPollingChange] = useState(false)
+    
+        // Early Warning state
+        const [earlyWarning, setEarlyWarning] = useState<any>(null)
 
   useEffect(() => {
     // Initialize dark mode (default to dark)
@@ -346,23 +349,25 @@ function App() {
         const fetchDashboardData = async () => {
           setLoading(true)
           try {
-            const [metricsRes, categoryRes, payerRes, trendsRes, predictionsRes, forecastRes, aiImpactRes] = await Promise.all([
-              fetch(`${API_URL}/api/dashboard/metrics`),
-              fetch(`${API_URL}/api/dashboard/denials-by-category`),
-              fetch(`${API_URL}/api/dashboard/denials-by-payer`),
-              fetch(`${API_URL}/api/analytics/resolution-trends`),
-              fetch(`${API_URL}/api/analytics/denial-predictions`),
-              fetch(`${API_URL}/api/analytics/recovery-forecast`),
-              fetch(`${API_URL}/api/analytics/ai-impact`)
-            ])
+                        const [metricsRes, categoryRes, payerRes, trendsRes, predictionsRes, forecastRes, aiImpactRes, earlyWarningRes] = await Promise.all([
+                          fetch(`${API_URL}/api/dashboard/metrics`),
+                          fetch(`${API_URL}/api/dashboard/denials-by-category`),
+                          fetch(`${API_URL}/api/dashboard/denials-by-payer`),
+                          fetch(`${API_URL}/api/analytics/resolution-trends`),
+                          fetch(`${API_URL}/api/analytics/denial-predictions`),
+                          fetch(`${API_URL}/api/analytics/recovery-forecast`),
+                          fetch(`${API_URL}/api/analytics/ai-impact`),
+                          fetch(`${API_URL}/api/analytics/early-warning`)
+                        ])
       
-            setMetrics(await metricsRes.json())
-            setDenialsByCategory(await categoryRes.json())
-            setDenialsByPayer(await payerRes.json())
-            setResolutionTrends(await trendsRes.json())
-            setDenialPredictions(await predictionsRes.json())
-            setRecoveryForecast(await forecastRes.json())
-            setAiImpact(await aiImpactRes.json())
+                        setMetrics(await metricsRes.json())
+                        setDenialsByCategory(await categoryRes.json())
+                        setDenialsByPayer(await payerRes.json())
+                        setResolutionTrends(await trendsRes.json())
+                        setDenialPredictions(await predictionsRes.json())
+                        setRecoveryForecast(await forecastRes.json())
+                        setAiImpact(await aiImpactRes.json())
+                        setEarlyWarning(await earlyWarningRes.json())
           } catch (error) {
             console.error('Error fetching dashboard data:', error)
           }
@@ -1256,10 +1261,107 @@ function App() {
                 </div>
               </div>
             </div>
-          )}
-        </div>
+                  )}
+                </div>
 
-        {/* Second Stats Row */}
+                {/* Early Warning Panel - Denial Spikes Alert */}
+                {earlyWarning && (earlyWarning.summary?.high_severity > 0 || earlyWarning.health_status === 'warning') && (
+                  <div className="vision-card border-l-4 border-amber-500">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/20">
+                          <AlertTriangle className="h-5 w-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">Early Warning: Denial Spikes Detected</h3>
+                          <p className="text-xs text-slate-400">
+                            {earlyWarning.summary?.high_severity} high-severity alerts | {earlyWarning.summary?.claims_at_risk} claims at risk | 
+                            Est. ${(earlyWarning.summary?.estimated_revenue_at_risk / 1000).toFixed(0)}K revenue at risk
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        earlyWarning.health_score < 50 ? 'bg-red-500/20 text-red-400' :
+                        earlyWarning.health_score < 70 ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-green-500/20 text-green-400'
+                      }`}>
+                        Health Score: {earlyWarning.health_score}/100
+                      </div>
+                    </div>
+            
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Payer Spikes */}
+                      <div>
+                        <div className="text-sm font-medium text-slate-300 mb-2">Top Payer Spikes (vs 30-day baseline)</div>
+                        <div className="space-y-2">
+                          {earlyWarning.payer_spikes?.slice(0, 3).map((spike: any, i: number) => (
+                            <div key={i} className={`p-3 rounded-lg ${
+                              spike.severity === 'high' ? 'bg-red-500/10 border border-red-500/30' :
+                              spike.severity === 'medium' ? 'bg-amber-500/10 border border-amber-500/30' :
+                              'bg-slate-700/50'
+                            }`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-white">{spike.payer} - {spike.category}</span>
+                                <span className={`text-sm font-bold ${spike.change_pct > 25 ? 'text-red-400' : 'text-amber-400'}`}>
+                                  +{spike.change_pct.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400 mb-1">
+                                {spike.baseline_rate.toFixed(1)}% → {spike.current_rate.toFixed(1)}% | {spike.denial_count_7d} denials this week
+                              </div>
+                              <div className="text-xs text-blue-400">
+                                Action: {spike.action}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+              
+                      {/* Category Spikes */}
+                      <div>
+                        <div className="text-sm font-medium text-slate-300 mb-2">Top Category Spikes (all payers)</div>
+                        <div className="space-y-2">
+                          {earlyWarning.category_spikes?.slice(0, 3).map((spike: any, i: number) => (
+                            <div key={i} className={`p-3 rounded-lg ${
+                              spike.severity === 'high' ? 'bg-red-500/10 border border-red-500/30' :
+                              spike.severity === 'medium' ? 'bg-amber-500/10 border border-amber-500/30' :
+                              'bg-slate-700/50'
+                            }`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-white">{spike.category}</span>
+                                <span className={`text-sm font-bold ${spike.change_pct > 25 ? 'text-red-400' : 'text-amber-400'}`}>
+                                  +{spike.change_pct.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400 mb-1">
+                                {spike.baseline_rate.toFixed(1)}% → {spike.current_rate.toFixed(1)}% | Top: {spike.top_payers?.join(', ')}
+                              </div>
+                              <div className="text-xs text-blue-400">
+                                Action: {spike.action}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+            
+                    <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+                      <div className="text-xs text-slate-500">
+                        Comparing: {earlyWarning.comparison_period} vs {earlyWarning.baseline_period}
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-xs"
+                        onClick={() => setActiveTab('denials')}
+                      >
+                        View All Denials
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Second Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="vision-stat-card">
             <div className="flex items-center justify-between">
