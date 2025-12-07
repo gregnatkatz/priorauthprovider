@@ -1,3 +1,6 @@
+/* IBM Plex Sans font from new design - must be first */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,13 +38,13 @@
   }
   
   .dark {
-    --background: 224 71% 4%;
+    --background: 240 10% 4%;
     --foreground: 213 31% 91%;
-    --card: 224 71% 6%;
+    --card: 240 10% 4%;
     --card-foreground: 213 31% 91%;
-    --popover: 224 71% 6%;
+    --popover: 240 10% 4%;
     --popover-foreground: 213 31% 91%;
-    --primary: 210 100% 52%;
+    --primary: 160 84% 39%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 222 47% 11%;
     --secondary-foreground: 210 40% 98%;
@@ -51,17 +54,17 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
+    --border: 0 0% 100% / 0.05;
     --input: 216 34% 17%;
-    --ring: 224 76% 48%;
-    --sidebar-background: 224 71% 4%;
+    --ring: 160 84% 39%;
+    --sidebar-background: 240 10% 4%;
     --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 210 100% 52%;
+    --sidebar-primary: 160 84% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 216 34% 17%;
     --sidebar-accent-foreground: 213 31% 91%;
-    --sidebar-border: 216 34% 17%;
-    --sidebar-ring: 210 100% 52%;
+    --sidebar-border: 0 0% 100% / 0.05;
+    --sidebar-ring: 160 84% 39%;
   }
 }
 
@@ -70,88 +73,187 @@
     @apply border-border;
   }
   body {
+    font-family: 'IBM Plex Sans', sans-serif;
     @apply text-foreground;
   }
   
-  /* Vision UI deep navy background with blue glows */
+  .mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  
+  /* New design: deep dark background with subtle grid */
   .dark body,
   .dark {
-    background: 
-      radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.25), transparent 50%),
-      radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.20), transparent 50%),
-      radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.10), transparent 60%),
-      #020617;
+    background-color: #0a0a0f;
+    background-image: 
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
   }
 }
 
 @layer components {
-  /* Vision UI glassmorphic card - navy blue with transparency */
+  /* New design card styles */
   .vision-card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.70));
-    border: 1px solid rgba(59, 130, 246, 0.20);
-    border-radius: 1.25rem;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(20px);
+    @apply rounded-2xl border border-white/5 p-5;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  .vision-card:hover {
+    @apply border-white/10;
   }
   
   .vision-stat-card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.90), rgba(30, 41, 59, 0.75));
-    border: 1px solid rgba(59, 130, 246, 0.15);
-    border-radius: 1rem;
-    padding: 1rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(16px);
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  .vision-stat-card:hover {
+    @apply border-white/10;
   }
   
   .vision-icon-box {
-    @apply w-12 h-12 rounded-xl flex items-center justify-center;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    @apply w-10 h-10 rounded-xl flex items-center justify-center;
   }
   
-  /* Colorful gradient icon backgrounds with glow */
+  /* Gradient KPI cards from new design */
+  .kpi-card-blue {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+  }
+  
+  .kpi-card-emerald {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+  }
+  
+  .kpi-card-amber {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+  }
+  
+  .kpi-card-violet {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.05));
+  }
+  
+  .kpi-card-red {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
+  }
+  
+  .kpi-card-cyan {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.05));
+  }
+  
+  .kpi-card-indigo {
+    @apply rounded-2xl border border-white/5 p-4 transition-colors;
+    background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.05));
+  }
+  
+  /* Icon backgrounds */
   .vision-gradient-blue {
-    background: linear-gradient(135deg, #3b82f6, #06b6d4);
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+    @apply bg-blue-500/20;
   }
   
   .vision-gradient-green {
-    background: linear-gradient(135deg, #10b981, #14b8a6);
-    box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+    @apply bg-emerald-500/20;
   }
   
   .vision-gradient-purple {
-    background: linear-gradient(135deg, #8b5cf6, #a855f7);
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+    @apply bg-violet-500/20;
   }
   
   .vision-gradient-orange {
-    background: linear-gradient(135deg, #f97316, #fbbf24);
-    box-shadow: 0 0 30px rgba(249, 115, 22, 0.5);
+    @apply bg-amber-500/20;
   }
   
   .vision-gradient-red {
-    background: linear-gradient(135deg, #ef4444, #f43f5e);
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+    @apply bg-red-500/20;
   }
   
   .vision-chart-card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.80));
-    border: 1px solid rgba(59, 130, 246, 0.25);
-    border-radius: 1.25rem;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(20px);
+    @apply rounded-2xl border border-white/5 p-5;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  /* Glow effects from new design */
+  .glow-emerald {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+  }
+  
+  .glow-red {
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.15);
+  }
+  
+  .glow-violet {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.15);
+  }
+  
+  .glow-cyan {
+    box-shadow: 0 0 40px rgba(6, 182, 212, 0.15);
   }
   
   .glow-blue {
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
   }
   
   .glow-green {
-    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
   }
   
   .glow-purple {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.15);
+  }
+  
+  /* Alert banner styles */
+  .alert-banner-red {
+    @apply relative overflow-hidden rounded-2xl p-5 mb-6;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  
+  /* AI insight box */
+  .ai-insight-box {
+    @apply p-3 rounded-xl border;
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.2);
+  }
+  
+  /* Tab styles */
+  .tab-active {
+    border-bottom: 2px solid #10b981;
+    color: white;
+  }
+  
+  .tab-inactive {
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+  }
+  
+  /* Slider styles */
+  .scenario-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .scenario-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    cursor: pointer;
+  }
+  
+  /* Sparkline bars */
+  .sparkline-bar {
+    @apply w-2 rounded-t;
   }
 }
 
