@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "description": "Agent registry for Denial Intelligence Platform MCP Server",
+  "azure_ai_foundry": {
+    "project_endpoint": "${PROJECT_ENDPOINT}",
+    "project_connection_string": "eastus2.api.azureml.ms;${SUBSCRIPTION_ID};${RESOURCE_GROUP};${PROJECT_NAME}"
+  },
+  "agents": {
+    "denial": [
+      {"id": "DEN-001", "name": "sdoh_scorer", "model": "gpt-4.1", "description": "Scores social determinants of health impact"},
+      {"id": "DEN-002", "name": "care_gap_detector", "model": "gpt-4.1", "description": "Detects gaps in patient care"},
+      {"id": "DEN-003", "name": "clinical_urgency", "model": "gpt-4.1", "description": "Assesses clinical urgency of cases"},
+      {"id": "DEN-004", "name": "financial_value", "model": "gpt-4.1-mini", "description": "Calculates financial value of claims"},
+      {"id": "DEN-005", "name": "recovery_predictor", "model": "o3", "description": "Predicts recovery likelihood"},
+      {"id": "DEN-006", "name": "p2p_optimizer", "model": "deepseek", "description": "Optimizes peer-to-peer reviews"},
+      {"id": "DEN-007", "name": "queue_wait_time", "model": "gpt-4.1-nano", "description": "Estimates queue wait times"},
+      {"id": "DEN-008", "name": "pa_risk_predictor", "model": "gpt-4.1-mini", "description": "Predicts prior auth risk"},
+      {"id": "DEN-009", "name": "doc_completeness", "model": "gpt-4.1-mini", "description": "Checks documentation completeness"},
+      {"id": "DEN-010", "name": "policy_monitor", "model": "gpt-4.1-nano", "description": "Monitors policy changes"},
+      {"id": "DEN-011", "name": "root_cause_analyzer", "model": "o3", "description": "Analyzes root causes of denials"},
+      {"id": "DEN-012", "name": "staff_feedback_processor", "model": "deepseek", "description": "Processes staff feedback for RL"}
+    ],
+    "validation": [
+      {"id": "VAL-001", "name": "safety_validator", "model": "o1", "description": "Validates safety-critical decisions"},
+      {"id": "VAL-002", "name": "consensus_checker", "model": "gpt-4.1", "description": "Checks agent consensus"},
+      {"id": "VAL-003", "name": "policy_match_grader", "model": "deepseek", "description": "Grades policy compliance"},
+      {"id": "VAL-004", "name": "viability_scorer", "model": "o3", "description": "Scores appeal viability"},
+      {"id": "VAL-005", "name": "eligibility_verifier", "model": "gpt-4.1-mini", "description": "Verifies patient eligibility"},
+      {"id": "VAL-006", "name": "followup_scheduler", "model": "gpt-4.1-nano", "description": "Schedules follow-up actions"}
+    ],
+    "cfo": [
+      {"id": "CFO-001", "name": "submission_churn_predictor", "model": "o3", "description": "Predicts submission churn"},
+      {"id": "CFO-002", "name": "payer_behavior_modeler", "model": "gpt-4.1", "description": "Models payer behavior patterns"},
+      {"id": "CFO-003", "name": "procedure_risk_scorer", "model": "gpt-4.1", "description": "Scores procedure denial risk"},
+      {"id": "CFO-004", "name": "documentation_gap_predictor", "model": "gpt-4.1-mini", "description": "Predicts documentation gaps"},
+      {"id": "CFO-005", "name": "contractual_estimator", "model": "gpt-4.1", "description": "Estimates contractual amounts"},
+      {"id": "CFO-006", "name": "collection_timeline_predictor", "model": "gpt-4.1-mini", "description": "Predicts collection timelines"},
+      {"id": "CFO-007", "name": "variance_analyzer", "model": "gpt-4.1", "description": "Analyzes payment variances"},
+      {"id": "CFO-008", "name": "denial_categorizer", "model": "gpt-4.1-mini", "description": "Categorizes denial types"},
+      {"id": "CFO-009", "name": "reconciliation_scorer", "model": "gpt-4.1-mini", "description": "Scores reconciliation accuracy"},
+      {"id": "CFO-010", "name": "cash_flow_forecaster", "model": "gpt-4.1", "description": "Forecasts cash flow"},
+      {"id": "CFO-011", "name": "budget_scenario_modeler", "model": "o3", "description": "Models budget scenarios"},
+      {"id": "CFO-012", "name": "executive_narrative_generator", "model": "gpt-4.1", "description": "Generates executive narratives"}
+    ],
+    "status": [
+      {"id": "STS-001", "name": "front_end_rejection_analyzer", "model": "o3", "description": "Analyzes 277CA front-end rejections"},
+      {"id": "STS-002", "name": "appeal_deadline_risk_assessor", "model": "o3", "description": "Prioritizes appeals by deadline risk"},
+      {"id": "STS-003", "name": "pending_claim_risk_scorer", "model": "gpt-4.1", "description": "Scores risk for pending claims"},
+      {"id": "STS-004", "name": "aging_trend_forecaster", "model": "gpt-4.1", "description": "Forecasts A/R aging trends"},
+      {"id": "STS-005", "name": "payer_sla_monitor", "model": "gpt-4.1-mini", "description": "Monitors payer SLA compliance"},
+      {"id": "STS-006", "name": "cob_coordination_analyzer", "model": "gpt-4.1-mini", "description": "Analyzes COB coordination issues"},
+      {"id": "STS-007", "name": "status_pattern_detector", "model": "deepseek", "description": "Detects status flow anomalies"},
+      {"id": "STS-008", "name": "status_intelligence_summarizer", "model": "gpt-4.1-nano", "description": "Summarizes status intelligence"}
+    ],
+    "system": [
+      {"id": "SYS-001", "name": "audit_agent", "model": "o3", "description": "Out-of-band consistency validation"},
+      {"id": "SYS-002", "name": "health_check_agent", "model": "gpt-4.1-mini", "description": "Monitors agent health/performance"},
+      {"id": "SYS-003", "name": "policy_scraper_agent", "model": "gpt-4.1", "description": "Weekly automated scraping of FL payer policy portals"}
+    ],
+    "rag": [
+      {"id": "RAG-001", "name": "policy_rag_agent", "model": "gpt-4.1", "description": "Retrieves and validates claims against payer policies"}
+    ]
+  },
+  "model_deployments": {
+    "gpt-4.1": {"deployment_name": "gpt-4.1", "model_version": "2024-11-20"},
+    "gpt-4.1-mini": {"deployment_name": "gpt-4.1-mini", "model_version": "2024-11-20"},
+    "gpt-4.1-nano": {"deployment_name": "gpt-4.1-nano", "model_version": "2024-11-20"},
+    "o1": {"deployment_name": "o1", "model_version": "2024-11-20"},
+    "o3": {"deployment_name": "o3", "model_version": "2024-11-20"},
+    "deepseek": {"deployment_name": "deepseek-r1", "model_version": "2024-11-20"}
+  },
+  "categories": {
+    "denial": {"display_name": "Denial Management", "agent_count": 12},
+    "validation": {"display_name": "Validation Layer", "agent_count": 6},
+    "cfo": {"display_name": "CFO Intelligence", "agent_count": 12},
+    "status": {"display_name": "Status Intelligence", "agent_count": 8},
+    "system": {"display_name": "System Agents", "agent_count": 3},
+    "rag": {"display_name": "RAG Agents", "agent_count": 1}
+  },
+  "total_agents": 42
+}
