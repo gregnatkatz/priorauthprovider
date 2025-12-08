@@ -202,13 +202,18 @@ Navigate to the **Payer** tab to compare payer performance:
 │  Backend (FastAPI + SQLAlchemy + Azure OpenAI)                  │
 │  ├── 42 AI Agents (Denial, CFO, Status, System, RAG)           │
 │  ├── LangGraph Workflows (Multi-agent orchestration)           │
-│  ├── ChromaDB RAG (9 payers, 25 policy documents)              │
+│  ├── Azure AI Search RAG (9 payers, 25 policy documents)       │
 │  └── EDI Parsers (835, 277CA, 277)                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  Database (SQLite with WAL mode)                                │
+│  Database (Azure SQL Database)                                  │
 │  ├── Dimension Tables (Payer, Provider, Patient, Procedure)    │
 │  ├── Fact Tables (Claim, Denial, Appeal, Remittance)           │
 │  └── Status Tables (277 tracking, Aging, SLA compliance)       │
+├─────────────────────────────────────────────────────────────────┤
+│  Vector Store (Azure AI Search)                                 │
+│  ├── Semantic Search (25 policy documents)                     │
+│  ├── 9 Major US Payers                                         │
+│  └── Real-time policy validation                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -287,7 +292,7 @@ Navigate to the **Payer** tab to compare payer performance:
 
 ## 📚 Payer Policy RAG System
 
-The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system using ChromaDB for semantic search across payer policy documents.
+The platform includes a comprehensive RAG (Retrieval-Augmented Generation) system using **Azure AI Search** for semantic search across payer policy documents.
 
 ### Policy Document Types
 
@@ -353,9 +358,21 @@ npm run dev
 Create `.env` in the backend directory:
 
 ```env
+# Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4
+
+# Azure SQL Database Configuration
+AZURE_SQL_SERVER=your-server.database.windows.net
+AZURE_SQL_DATABASE=your-database
+AZURE_SQL_USER=your-username
+AZURE_SQL_PASSWORD=your-password
+
+# Azure AI Search Configuration (for Policy RAG)
+AZURE_SEARCH_ENDPOINT=https://your-search-service.search.windows.net
+AZURE_SEARCH_KEY=your-search-api-key
+AZURE_SEARCH_INDEX=your-index-name
 ```
 
 ---
@@ -436,7 +453,8 @@ The platform includes sample X12 EDI files for testing:
 
 - All API endpoints require authentication
 - Azure OpenAI keys stored in environment variables
-- SQLite database with WAL mode for concurrent access
+- Azure SQL Database with enterprise-grade security
+- Azure AI Search with API key authentication
 - No PHI stored in logs or error messages
 
 ---
