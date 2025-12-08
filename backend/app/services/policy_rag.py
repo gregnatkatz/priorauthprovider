@@ -1,8 +1,8 @@
 """
-Payer Policy RAG System with ChromaDB
+Payer Policy RAG System with Azure AI Search
 
 This module provides a comprehensive RAG (Retrieval-Augmented Generation) system
-for FL payer policies using ChromaDB as the vector store.
+for FL payer policies using Azure AI Search as the vector store.
 
 Supported Payers:
 - Florida Blue (BCBS FL)
@@ -20,17 +20,36 @@ Features:
 import os
 import json
 import hashlib
+import re
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 
+# Azure AI Search imports
 try:
-    import chromadb
-    from chromadb.config import Settings
-    CHROMADB_AVAILABLE = True
+    from azure.search.documents import SearchClient
+    from azure.search.documents.indexes import SearchIndexClient
+    from azure.search.documents.indexes.models import (
+        SearchIndex,
+        SearchField,
+        SearchFieldDataType,
+        SimpleField,
+        SearchableField,
+        SemanticConfiguration,
+        SemanticField,
+        SemanticPrioritizedFields,
+        SemanticSearch
+    )
+    from azure.core.credentials import AzureKeyCredential
+    AZURE_SEARCH_AVAILABLE = True
 except ImportError:
-    CHROMADB_AVAILABLE = False
-    chromadb = None
+    AZURE_SEARCH_AVAILABLE = False
+    SearchClient = None
+
+# Azure AI Search configuration from environment variables
+AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT", "https://vectorstore25.search.windows.net")
+AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY", "")
+AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX", "payerpolicy25")
 
 
 @dataclass
@@ -64,13 +83,13 @@ class PolicySearchResult:
 
 class PayerPolicyRAG:
     """
-    RAG system for payer policy retrieval using ChromaDB.
+    RAG system for payer policy retrieval using Azure AI Search.
     
     Provides semantic search across comprehensive FL payer policies
     with version tracking and change detection.
     """
     
-    COLLECTION_NAME = "payer_policies"
+    INDEX_NAME = AZURE_SEARCH_INDEX
     
     PAYER_CONFIG = {
         "florida_blue": {
@@ -183,53 +202,71 @@ class PayerPolicyRAG:
         }
     }
     
-    def __init__(self, persist_directory: str = "./chroma_db"):
-        """Initialize the RAG system with ChromaDB."""
-        self.persist_directory = persist_directory
-        self.client = None
-        self.collection = None
-        self._initialize_chromadb()
+    def __init__(self, endpoint: str = None, api_key: str = None, index_name: str = None):
+        """Initialize the RAG system with Azure AI Search."""
+        self.endpoint = endpoint or AZURE_SEARCH_ENDPOINT
+        self.api_key = api_key or AZURE_SEARCH_KEY
+        self.index_name = index_name or AZURE_SEARCH_INDEX
+        self.search_client = None
+        self.collection = None  # For backward compatibility
+        self._initialize_azure_search()
     
-    def _initialize_chromadb(self):
-        """Initialize ChromaDB client and collection."""
-        if not CHROMADB_AVAILABLE:
-            print("Warning: ChromaDB not available. RAG features disabled.")
+    def _initialize_azure_search(self):
+        """Initialize Azure AI Search client."""
+        if not AZURE_SEARCH_AVAILABLE:
+            print("Warning: Azure AI Search SDK not available. RAG features disabled.")
             return
         
-        self.client = chromadb.PersistentClient(path=self.persist_directory)
+        if not self.api_key:
+            print("Warning: Azure AI Search API key not configured. RAG features disabled.")
+            return
         
-        self.collection = self.client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
-            metadata={"description": "FL Payer Policy Documents"}
-        )
+        try:
+            self.search_client = SearchClient(
+                endpoint=self.endpoint,
+                index_name=self.index_name,
+                credential=AzureKeyCredential(self.api_key)
+            )
+            self.collection = True  # For backward compatibility checks
+            print(f"Connected to Azure AI Search: {self.index_name}")
+        except Exception as e:
+            print(f"Error connecting to Azure AI Search: {e}")
+            self.search_client = None
+            self.collection = None
+    
+    def _sanitize_key(self, key: str) -> str:
+        """Sanitize document key to only contain valid characters for Azure AI Search."""
+        return re.sub(r'[^a-zA-Z0-9_\-=]', '_', key)
     
     def add_policy(self, policy: PolicyDocument) -> str:
         """Add a policy document to the vector store."""
-        if not self.collection:
+        if not self.search_client:
             return ""
         
-        doc_id = f"{policy.payer_id}_{policy.policy_number}_{policy.version}"
+        raw_id = f"{policy.payer_id}_{policy.policy_number}_{policy.version}"
+        doc_id = self._sanitize_key(raw_id)
         
-        metadata = {
+        document = {
+            "id": doc_id,
             "payer_id": policy.payer_id,
             "payer_name": policy.payer_name,
             "policy_type": policy.policy_type,
             "policy_title": policy.policy_title,
             "policy_number": policy.policy_number,
             "effective_date": policy.effective_date,
+            "content": policy.content,
             "source_url": policy.source_url,
             "last_updated": policy.last_updated,
             "version": policy.version,
             "content_hash": policy.content_hash
         }
         
-        self.collection.upsert(
-            ids=[doc_id],
-            documents=[policy.content],
-            metadatas=[metadata]
-        )
-        
-        return doc_id
+        try:
+            self.search_client.upload_documents(documents=[document])
+            return doc_id
+        except Exception as e:
+            print(f"Error adding policy: {e}")
+            return ""
     
     def search_policies(
         self,
@@ -239,7 +276,7 @@ class PayerPolicyRAG:
         n_results: int = 5
     ) -> List[PolicySearchResult]:
         """
-        Search for relevant policy documents.
+        Search for relevant policy documents using Azure AI Search.
         
         Args:
             query: Search query (e.g., "prior authorization for knee replacement")
@@ -250,84 +287,89 @@ class PayerPolicyRAG:
         Returns:
             List of PolicySearchResult with relevance scores
         """
-        if not self.collection:
+        if not self.search_client:
             return []
         
-        where_filter = {}
+        # Build filter string for Azure AI Search
+        filters = []
         if payer_id:
-            where_filter["payer_id"] = payer_id
+            filters.append(f"payer_id eq '{payer_id}'")
         if policy_type:
-            where_filter["policy_type"] = policy_type
+            filters.append(f"policy_type eq '{policy_type}'")
+        filter_str = " and ".join(filters) if filters else None
         
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=n_results,
-            where=where_filter if where_filter else None,
-            include=["documents", "metadatas", "distances"]
-        )
-        
-        search_results = []
-        if results and results["ids"] and results["ids"][0]:
-            for i, doc_id in enumerate(results["ids"][0]):
-                metadata = results["metadatas"][0][i] if results["metadatas"] else {}
-                document = results["documents"][0][i] if results["documents"] else ""
-                distance = results["distances"][0][i] if results["distances"] else 1.0
+        try:
+            results = self.search_client.search(
+                search_text=query,
+                filter=filter_str,
+                top=n_results,
+                include_total_count=True
+            )
+            
+            search_results = []
+            for result in results:
+                # Azure AI Search returns @search.score for relevance
+                score = result.get("@search.score", 0)
+                # Normalize score to 0-1 range (Azure scores can be > 1)
+                relevance_score = min(score / 10.0, 1.0) if score else 0.0
                 
-                relevance_score = 1.0 - min(distance, 1.0)
+                content = result.get("content", "")
                 
                 policy = PolicyDocument(
-                    payer_id=metadata.get("payer_id", ""),
-                    payer_name=metadata.get("payer_name", ""),
-                    policy_type=metadata.get("policy_type", ""),
-                    policy_title=metadata.get("policy_title", ""),
-                    policy_number=metadata.get("policy_number", ""),
-                    effective_date=metadata.get("effective_date", ""),
-                    content=document,
-                    source_url=metadata.get("source_url", ""),
-                    last_updated=metadata.get("last_updated", ""),
-                    version=metadata.get("version", ""),
-                    content_hash=metadata.get("content_hash", "")
+                    payer_id=result.get("payer_id", ""),
+                    payer_name=result.get("payer_name", ""),
+                    policy_type=result.get("policy_type", ""),
+                    policy_title=result.get("policy_title", ""),
+                    policy_number=result.get("policy_number", ""),
+                    effective_date=result.get("effective_date", ""),
+                    content=content,
+                    source_url=result.get("source_url", ""),
+                    last_updated=result.get("last_updated", ""),
+                    version=result.get("version", ""),
+                    content_hash=result.get("content_hash", "")
                 )
                 
                 search_results.append(PolicySearchResult(
                     document=policy,
                     relevance_score=relevance_score,
-                    matched_section=document[:500] + "..." if len(document) > 500 else document,
-                    metadata=metadata
+                    matched_section=content[:500] + "..." if len(content) > 500 else content,
+                    metadata=dict(result)
                 ))
-        
-        return search_results
+            
+            return search_results
+        except Exception as e:
+            print(f"Error searching policies: {e}")
+            return []
     
     def get_policy_by_id(self, payer_id: str, policy_number: str) -> Optional[PolicyDocument]:
         """Get a specific policy by payer and policy number."""
-        if not self.collection:
+        if not self.search_client:
             return None
         
-        results = self.collection.get(
-            where={"$and": [
-                {"payer_id": payer_id},
-                {"policy_number": policy_number}
-            ]},
-            include=["documents", "metadatas"]
-        )
-        
-        if results and results["ids"]:
-            metadata = results["metadatas"][0] if results["metadatas"] else {}
-            document = results["documents"][0] if results["documents"] else ""
-            
-            return PolicyDocument(
-                payer_id=metadata.get("payer_id", ""),
-                payer_name=metadata.get("payer_name", ""),
-                policy_type=metadata.get("policy_type", ""),
-                policy_title=metadata.get("policy_title", ""),
-                policy_number=metadata.get("policy_number", ""),
-                effective_date=metadata.get("effective_date", ""),
-                content=document,
-                source_url=metadata.get("source_url", ""),
-                last_updated=metadata.get("last_updated", ""),
-                version=metadata.get("version", ""),
-                content_hash=metadata.get("content_hash", "")
+        try:
+            filter_str = f"payer_id eq '{payer_id}' and policy_number eq '{policy_number}'"
+            results = self.search_client.search(
+                search_text="*",
+                filter=filter_str,
+                top=1
             )
+            
+            for result in results:
+                return PolicyDocument(
+                    payer_id=result.get("payer_id", ""),
+                    payer_name=result.get("payer_name", ""),
+                    policy_type=result.get("policy_type", ""),
+                    policy_title=result.get("policy_title", ""),
+                    policy_number=result.get("policy_number", ""),
+                    effective_date=result.get("effective_date", ""),
+                    content=result.get("content", ""),
+                    source_url=result.get("source_url", ""),
+                    last_updated=result.get("last_updated", ""),
+                    version=result.get("version", ""),
+                    content_hash=result.get("content_hash", "")
+                )
+        except Exception as e:
+            print(f"Error getting policy by id: {e}")
         
         return None
     
@@ -360,42 +402,49 @@ class PayerPolicyRAG:
     
     def get_all_policies_for_payer(self, payer_id: str) -> List[PolicyDocument]:
         """Get all policies for a specific payer."""
-        if not self.collection:
+        if not self.search_client:
             return []
         
-        results = self.collection.get(
-            where={"payer_id": payer_id},
-            include=["documents", "metadatas"]
-        )
-        
-        policies = []
-        if results and results["ids"]:
-            for i, doc_id in enumerate(results["ids"]):
-                metadata = results["metadatas"][i] if results["metadatas"] else {}
-                document = results["documents"][i] if results["documents"] else ""
-                
+        try:
+            filter_str = f"payer_id eq '{payer_id}'"
+            results = self.search_client.search(
+                search_text="*",
+                filter=filter_str,
+                top=1000
+            )
+            
+            policies = []
+            for result in results:
                 policies.append(PolicyDocument(
-                    payer_id=metadata.get("payer_id", ""),
-                    payer_name=metadata.get("payer_name", ""),
-                    policy_type=metadata.get("policy_type", ""),
-                    policy_title=metadata.get("policy_title", ""),
-                    policy_number=metadata.get("policy_number", ""),
-                    effective_date=metadata.get("effective_date", ""),
-                    content=document,
-                    source_url=metadata.get("source_url", ""),
-                    last_updated=metadata.get("last_updated", ""),
-                    version=metadata.get("version", ""),
-                    content_hash=metadata.get("content_hash", "")
+                    payer_id=result.get("payer_id", ""),
+                    payer_name=result.get("payer_name", ""),
+                    policy_type=result.get("policy_type", ""),
+                    policy_title=result.get("policy_title", ""),
+                    policy_number=result.get("policy_number", ""),
+                    effective_date=result.get("effective_date", ""),
+                    content=result.get("content", ""),
+                    source_url=result.get("source_url", ""),
+                    last_updated=result.get("last_updated", ""),
+                    version=result.get("version", ""),
+                    content_hash=result.get("content_hash", "")
                 ))
-        
-        return policies
+            
+            return policies
+        except Exception as e:
+            print(f"Error getting policies for payer: {e}")
+            return []
     
     def get_statistics(self) -> Dict[str, Any]:
         """Get statistics about the policy database."""
-        if not self.collection:
-            return {"error": "ChromaDB not available"}
+        if not self.search_client:
+            return {"error": "Azure AI Search not available"}
         
-        total_count = self.collection.count()
+        try:
+            # Count total documents
+            results = self.search_client.search(search_text="*", top=0, include_total_count=True)
+            total_count = results.get_count() or 0
+        except Exception:
+            total_count = 0
         
         stats = {
             "total_policies": total_count,
@@ -417,7 +466,7 @@ class PayerPolicyRAG:
     
     def get_policy_stats(self) -> Dict[str, Any]:
         """Get policy statistics in the format expected by API endpoints."""
-        if not self.collection:
+        if not self.search_client:
             return {
                 "total_policies": 0,
                 "by_payer": {},
@@ -425,7 +474,12 @@ class PayerPolicyRAG:
                 "last_updated": None
             }
         
-        total_count = self.collection.count()
+        try:
+            # Count total documents
+            results = self.search_client.search(search_text="*", top=0, include_total_count=True)
+            total_count = results.get_count() or 0
+        except Exception:
+            total_count = 0
         
         by_payer = {}
         by_type = {}
@@ -448,31 +502,30 @@ class PayerPolicyRAG:
     
     def get_policy_by_number(self, policy_number: str) -> Optional[PolicyDocument]:
         """Get a policy by its policy number."""
-        if not self.collection:
+        if not self.search_client:
             return None
         
         try:
-            results = self.collection.get(
-                where={"policy_number": policy_number},
-                include=["documents", "metadatas"]
+            filter_str = f"policy_number eq '{policy_number}'"
+            results = self.search_client.search(
+                search_text="*",
+                filter=filter_str,
+                top=1
             )
             
-            if results and results["ids"]:
-                metadata = results["metadatas"][0]
-                content = results["documents"][0]
-                
+            for result in results:
                 return PolicyDocument(
-                    payer_id=metadata.get("payer_id", ""),
-                    payer_name=metadata.get("payer_name", ""),
-                    policy_type=metadata.get("policy_type", ""),
-                    policy_title=metadata.get("policy_title", ""),
-                    policy_number=metadata.get("policy_number", ""),
-                    effective_date=metadata.get("effective_date", ""),
-                    content=content,
-                    source_url=metadata.get("source_url", ""),
-                    last_updated=metadata.get("last_updated", ""),
-                    version=metadata.get("version", "1.0"),
-                    content_hash=metadata.get("content_hash", "")
+                    payer_id=result.get("payer_id", ""),
+                    payer_name=result.get("payer_name", ""),
+                    policy_type=result.get("policy_type", ""),
+                    policy_title=result.get("policy_title", ""),
+                    policy_number=result.get("policy_number", ""),
+                    effective_date=result.get("effective_date", ""),
+                    content=result.get("content", ""),
+                    source_url=result.get("source_url", ""),
+                    last_updated=result.get("last_updated", ""),
+                    version=result.get("version", "1.0"),
+                    content_hash=result.get("content_hash", "")
                 )
         except Exception as e:
             print(f"Error getting policy by number: {e}")

@@ -4434,7 +4434,7 @@ async def get_policy_stats():
             "by_payer": stats.get("by_payer", {}),
             "by_type": stats.get("by_type", {}),
             "last_updated": stats.get("last_updated"),
-            "chromadb_status": "connected" if rag.collection else "disconnected"
+            "azure_search_status": "connected" if rag.search_client else "disconnected"
         }
     except Exception as e:
         return {
@@ -4450,6 +4450,6 @@ async def get_policy_stats():
                 "prior_auth": 4,
                 "clinical_guidelines": 4
             },
-            "chromadb_status": "error",
+            "azure_search_status": "error",
             "error": str(e)
         }
