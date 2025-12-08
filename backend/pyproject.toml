@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>"]
+authors = ["Gregory Katz <gregory.katz@microsoft.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
